@@ -16,7 +16,9 @@ import copy
 import pickle
 from pycocotools import mask as cocomask
 import geometry
-from icp import icp
+#from icp import icp
+#from basicICP import icp_point_to_plane, icp_point_to_point_lm, icp_point_to_plane_lm
+import open3d
 
 # mAP
 # Precision = True positive / (True positive + False positive)
@@ -155,13 +157,44 @@ threeD_boxes[14, :, :] = np.array([[0.047, 0.0735, 0.0925],  # phone [94, 147, 1
                                      [-0.047, -0.0735, 0.0925]])
 
 
-def toPix_array(translation):
+def project2img(img, obj):
 
-    xpix = ((translation[:, 0] * fxkin) / translation[:, 2]) + cxkin
-    ypix = ((translation[:, 1] * fykin) / translation[:, 2]) + cykin
-    #zpix = translation[2] * fxkin
+    mask = np.zeros(img.shape, dtype=np.bool)
+    xpix = ((obj[:, 0] * fxkin) / obj[:, 2]) + cxkin
+    ypix = ((obj[:, 1] * fykin) / obj[:, 2]) + cykin
+    for i in range(0, xpix.shape[0]):
+        x = int(xpix[i])
+        y = int(ypix[i])
+        if mask[y, x] == False:
+            img[y, x] = obj[i,2] * 1000.0
+            mask[y, x] = True
+        elif (obj[i, 2]*1000.0) < img[y, x]:
+            img[y, x] = obj[i, 2]*1000.0
 
-    return np.stack((xpix, ypix), axis=1) #, zpix]
+    return img
+
+
+def create_point_cloud(depth, fx, fy, cx, cy, ds):
+
+    rows, cols = depth.shape
+
+    depRe = depth.reshape(rows * cols)
+    zP = np.multiply(depRe, ds)
+
+    x, y = np.meshgrid(np.arange(0, cols, 1), np.arange(0, rows, 1), indexing='xy')
+    yP = y.reshape(rows * cols) - cy
+    xP = x.reshape(rows * cols) - cx
+    yP = np.multiply(yP, zP)
+    xP = np.multiply(xP, zP)
+    yP = np.divide(yP, fy)
+    xP = np.divide(xP, fx)
+
+    cloud_final = np.transpose(np.array((xP, yP, zP)))
+    cloud_final[cloud_final[:,2]==0] = np.NaN
+
+
+    return cloud_final
+
 
 def re(R_est, R_gt):
     """
@@ -559,7 +592,7 @@ if __name__ == "__main__":
                                     K = np.float32([fxkin, 0., cxkin, 0., fykin, cykin, 0., 0., 1.]).reshape(3, 3)
                                     retval, orvec, otvec, inliers = cv2.solvePnPRansac(objectPoints=obj_points,
                                                                               imagePoints=est_points, cameraMatrix=K,
-                                                                              distCoeffs=None, rvec=None, tvec=itvec, useExtrinsicGuess=True,iterationsCount=100,
+                                                                              distCoeffs=None, rvec=irvec, tvec=itvec, useExtrinsicGuess=True,iterationsCount=100,
                                                                               reprojectionError=5.0, confidence=0.99,
                                                                               flags=cv2.SOLVEPNP_ITERATIVE)
                                     rmat, _ = cv2.Rodrigues(orvec)
@@ -567,7 +600,14 @@ if __name__ == "__main__":
                                     xyz = te((np.array(gtPoses[j], dtype=np.float32)*0.001), (otvec.T))
 
                                     # icp
-                                    est_crop = image_dep[int(b1[1]):int(b1[3]), int(b1[0]):int(b1[2])]
+                                    img_crop = image_dep[int(b1[1]):int(b1[3]), int(b1[0]):int(b1[2])]
+
+                                    name_img = '/home/sthalham/visTests/det_crop.jpg'
+                                    scaCro = 255.0 / np.nanmax(img_crop)
+                                    cross = np.multiply(img_crop, scaCro)
+                                    dep_sca = cross.astype(np.uint8)
+                                    cv2.imwrite(name_img, dep_sca)
+
                                     ply_path = model_path + 'obj_' + "{0:0=2d}".format(cls) + '.ply'
 
                                     thePly = np.loadtxt(ply_path, dtype=np.float32, skiprows=16, usecols=(0, 1, 2))
@@ -576,11 +616,40 @@ if __name__ == "__main__":
                                     rot = np.asarray(rmat, dtype=np.float32)
 
                                     rotPly = rot.dot(thePly.T).T
-                                    traPly = rotPly + np.repeat(otvec[np.newaxis, :], rotPly.shape[0], axis=0)
+                                    traPly = rotPly + np.repeat(itvec[np.newaxis, :], rotPly.shape[0], axis=0)
 
-                                    box3D = toPix_array(tDbox)
+                                    #est_img = copy.deepcopy(image_dep)
+                                    est_img = np.zeros(image_dep.shape)
+                                    proj_img = project2img(est_img, traPly)
+                                    est_crop = proj_img[int(b1[1]):int(b1[3]), int(b1[0]):int(b1[2])]
 
-                                    rd_refined = icp(est_crop, B, init_pose=rmat, max_iterations=20, tolerance=0.001)
+                                    name_est = '/home/sthalham/visTests/est_crop.jpg'
+                                    scaCro = 255.0 / np.nanmax(est_crop)
+                                    cross = np.multiply(est_crop, scaCro)
+                                    dep_sca = cross.astype(np.uint8)
+                                    cv2.imwrite(name_est, cross)
+
+                                    A = create_point_cloud(est_crop, fxkin, fykin, cxkin, cykin, 0.001)
+                                    pcd1 = open3d.PointCloud()
+                                    pcd1.points = open3d.Vector3dVector(A)
+                                    B = create_point_cloud(img_crop, fxkin, fykin, cxkin, cykin, 0.001)
+                                    pcd2 = open3d.PointCloud()
+                                    pcd2.points = open3d.Vector3dVector(B)
+                                    pose = np.zeros((4, 4), dtype=np.float32)
+                                    #pose = np.eye(4, 4)
+                                    pose[:3, :3] = rmat
+                                    pose[:3, 3] = itvec.T
+                                    pose[:3, 3] = np.array([0.0, 0.0, 0.0], dtype=np.float32).T
+                                    pose[3, 3] = 1
+
+                                    evaluation = open3d.evaluate_registration(pcd1, pcd2, 0.1, pose)
+                                    print(evaluation)
+
+                                    reg_p2p =open3d.registration_icp(pcd1, pcd2, 0.1, pose, open3d.TransformationEstimationPointToPoint())
+
+                                    rmat_refined = reg_p2p.transformation
+                                    rd_icp = re(np.array(gtRots[j], dtype=np.float32).reshape(3, 3), rmat_refined[:3, :3])
+                                    print(rd_icp)
 
                                     rot = tf3d.quaternions.mat2quat(rmat)
                                     pose = np.concatenate((np.array(otvec[:,0], dtype=np.float32), np.array(rot, dtype=np.float32)), axis=0)
