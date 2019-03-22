@@ -491,9 +491,9 @@ if __name__ == "__main__":
     root = '/home/sthalham/data/renderings/linemod_BG'
     if dataset is 'tless':
         root = '/home/sthalham/data/renderings/tless_BG/patches'
-    target = '/home/sthalham/data/prepro/linemod_box3D_rgb_full/'
+    target = '/home/sthalham/data/prepro/linemod_box3D_rgb_simplex/'
     # [depth, normals, sensor, simplex, full]
-    method = 'full'
+    method = 'simplex'
     visu = False
     n_samples = 10000 # real=1214
     if dataset is 'tless':
@@ -600,8 +600,8 @@ if __name__ == "__main__":
                     scaCro = 255.0 / np.nanmax(depthAug)
                     cross = np.multiply(depthAug, scaCro)
                     dep_sca = cross.astype(np.uint8)
-                    cv2.imwrite(fileName, dep_sca)
-                    #cv2.imwrite(fileName, aug_xyz)
+                    #cv2.imwrite(fileName, dep_sca)
+                    cv2.imwrite(fileName, aug_xyz)
 
                 elif method == 'full':
                     drawKern = [3, 5, 7]

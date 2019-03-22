@@ -376,6 +376,11 @@ if __name__ == "__main__":
         depPath = testData + s + "/depth/"
         gtPath = testData + s + "/gt.yml"
 
+        # load mesh and transform
+        ply_path = model_path + 'obj_' + s + '.ply'
+        pcd_model = open3d.read_point_cloud(ply_path)
+        pcd_model.paint_uniform_color(np.array([0.0, 0.0, 0.99]))
+
         with open(gtPath, 'r') as streamGT:
             gtYML = yaml.load(streamGT)
 
@@ -585,6 +590,7 @@ if __name__ == "__main__":
                                         if xyz < 0.25:
                                             less25cmI.append(xyz)
 
+                                    print('--------------------- PnP Pose Estimation -------------------')
                                     obj_points = np.ascontiguousarray(threeD_boxes[dC-1, :, :], dtype=np.float32)
                                     est_points = np.ascontiguousarray(np.asarray(detPoses[i], dtype=np.float32).T, dtype=np.float32).reshape(
                                         (8, 1, 2))
@@ -593,65 +599,33 @@ if __name__ == "__main__":
                                     retval, orvec, otvec, inliers = cv2.solvePnPRansac(objectPoints=obj_points,
                                                                               imagePoints=est_points, cameraMatrix=K,
                                                                               distCoeffs=None, rvec=irvec, tvec=itvec, useExtrinsicGuess=True,iterationsCount=100,
-                                                                              reprojectionError=5.0, confidence=0.99,
+                                                                              reprojectionError=8.0, confidence=0.99,
                                                                               flags=cv2.SOLVEPNP_ITERATIVE)
                                     rmat, _ = cv2.Rodrigues(orvec)
                                     rd = re(np.array(gtRots[j], dtype=np.float32).reshape(3, 3), rmat)
                                     xyz = te((np.array(gtPoses[j], dtype=np.float32)*0.001), (otvec.T))
 
-                                    # icp
-                                    img_crop = image_dep[int(b1[1]):int(b1[3]), int(b1[0]):int(b1[2])]
+                                    print('--------------------- ICP refinement -------------------')
 
-                                    name_img = '/home/sthalham/visTests/det_crop.jpg'
-                                    scaCro = 255.0 / np.nanmax(img_crop)
-                                    cross = np.multiply(img_crop, scaCro)
-                                    dep_sca = cross.astype(np.uint8)
-                                    cv2.imwrite(name_img, dep_sca)
+                                    pcd_img = create_point_cloud(image_dep, fxkin, fykin, cxkin, cykin, 0.001)
+                                    pcd_img = pcd_img.reshape((480, 640, 3))[int(b1[1]):int(b1[3]), int(b1[0]):int(b1[2]), :]
+                                    pcd_img = pcd_img.reshape((pcd_img.shape[0]*pcd_img.shape[1], 3))
+                                    pcd_crop = open3d.PointCloud()
+                                    pcd_crop.points = open3d.Vector3dVector(pcd_img)
+                                    pcd_crop.paint_uniform_color(np.array([0.99, 0.0, 0.00]))
+                                    #open3d.draw_geometries([pcd_crop, pcd_model])
 
-                                    ply_path = model_path + 'obj_' + "{0:0=2d}".format(cls) + '.ply'
+                                    guess = np.zeros((4, 4), dtype=np.float32)
+                                    guess[:3, :3] = rmat
+                                    guess[:3, 3] = itvec.T
+                                    guess[3, :] = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32).T
 
-                                    thePly = np.loadtxt(ply_path, dtype=np.float32, skiprows=16, usecols=(0, 1, 2))
-                                    p_mask = np.where(thePly[:, 0] != 3)
-                                    thePly = thePly[p_mask]
-                                    rot = np.asarray(rmat, dtype=np.float32)
+                                    reg_p2p =open3d.registration_icp(pcd_model, pcd_crop, 0.015, guess, open3d.TransformationEstimationPointToPoint())
+                                    rmat_refined = reg_p2p.transformation[:3, :3]
 
-                                    rotPly = rot.dot(thePly.T).T
-                                    traPly = rotPly + np.repeat(itvec[np.newaxis, :], rotPly.shape[0], axis=0)
+                                    rd = re(np.array(gtRots[j], dtype=np.float32).reshape(3, 3), rmat_refined[:3, :3])
 
-                                    #est_img = copy.deepcopy(image_dep)
-                                    est_img = np.zeros(image_dep.shape)
-                                    proj_img = project2img(est_img, traPly)
-                                    est_crop = proj_img[int(b1[1]):int(b1[3]), int(b1[0]):int(b1[2])]
-
-                                    name_est = '/home/sthalham/visTests/est_crop.jpg'
-                                    scaCro = 255.0 / np.nanmax(est_crop)
-                                    cross = np.multiply(est_crop, scaCro)
-                                    dep_sca = cross.astype(np.uint8)
-                                    cv2.imwrite(name_est, cross)
-
-                                    A = create_point_cloud(est_crop, fxkin, fykin, cxkin, cykin, 0.001)
-                                    pcd1 = open3d.PointCloud()
-                                    pcd1.points = open3d.Vector3dVector(A)
-                                    B = create_point_cloud(img_crop, fxkin, fykin, cxkin, cykin, 0.001)
-                                    pcd2 = open3d.PointCloud()
-                                    pcd2.points = open3d.Vector3dVector(B)
-                                    pose = np.zeros((4, 4), dtype=np.float32)
-                                    #pose = np.eye(4, 4)
-                                    pose[:3, :3] = rmat
-                                    pose[:3, 3] = itvec.T
-                                    pose[:3, 3] = np.array([0.0, 0.0, 0.0], dtype=np.float32).T
-                                    pose[3, 3] = 1
-
-                                    evaluation = open3d.evaluate_registration(pcd1, pcd2, 0.1, pose)
-                                    print(evaluation)
-
-                                    reg_p2p =open3d.registration_icp(pcd1, pcd2, 0.1, pose, open3d.TransformationEstimationPointToPoint())
-
-                                    rmat_refined = reg_p2p.transformation
-                                    rd_icp = re(np.array(gtRots[j], dtype=np.float32).reshape(3, 3), rmat_refined[:3, :3])
-                                    print(rd_icp)
-
-                                    rot = tf3d.quaternions.mat2quat(rmat)
+                                    rot = tf3d.quaternions.mat2quat(rmat.dot(rd))
                                     pose = np.concatenate((np.array(otvec[:,0], dtype=np.float32), np.array(rot, dtype=np.float32)), axis=0)
                                     posevis.append(pose)
 
@@ -680,55 +654,6 @@ if __name__ == "__main__":
                                             less20cm.append(xyz)
                                         if xyz < 0.25:
                                             less25cm.append(xyz)
-                                    '''
-
-                                    x_t = gtPoses[j][0] * 0.001
-                                    y_t = gtPoses[j][1] * 0.001
-
-                                    x = (((b1[0] + b1[2] * 0.5) - cxkin) * gtPoses[j][2]) / fxkin * 0.001
-                                    y = (((b1[1] + b1[3] * 0.5) - cykin) * gtPoses[j][2]) / fykin * 0.001
-
-                                    # only image plane
-                                    x_o = ((detPoses[i][0] - cxkin) * gtPoses[j][2]) / fxkin * 0.001
-                                    y_o = ((detPoses[i][1] - cykin) * gtPoses[j][2]) / fykin * 0.001
-                                    x_o_d = np.abs(x_o - x_t)
-                                    y_o_d = np.abs(y_o - y_t)
-                                    xy = np.linalg.norm(np.asarray([x_o_d, y_o_d], dtype=np.float32))
-
-                                    xd_n = np.abs(x - x_t)
-                                    yd_n = np.abs(y - y_t)
-                                    xy_n = np.linalg.norm(np.asarray([xd_n, yd_n], dtype=np.float32))
-                                    '''
-
-                                    # gt-pose
-                                    #traGT = np.asarray(gtPoses[i], dtype=np.float32)
-                                    #xGT = ((traGT[0] * fxkin) / traGT[2]) + cxkin
-                                    #yGT = ((traGT[1] * fykin) / traGT[2]) + cykin
-                                    #zGT = traGT[2] * 0.001
-                                    #rotGT = np.asarray(gtRots[i], dtype=np.float32)
-                                    #rotGT = tf3d.quaternions.mat2quat(rotGT.reshape(3, 3))
-
-                                    # det-pose
-                                    #dX = np.abs((np.abs(xGT) - np.abs(detPoses[i][0])))
-                                    #dY = np.abs((np.abs(yGT) - np.abs(detPoses[i][1])))
-                                    #dZ = np.abs((np.abs(zGT) - np.abs(detPoses[i][2])))
-                                    #rotDet = np.asarray(detPoses[i][3:], dtype=np.float32)
-
-                                    # posest
-                                    #q1 = pyquaternion.Quaternion(detPoses[i][3:]).unit
-                                    #q2 = pyquaternion.Quaternion(rotGT).unit
-                                    #dRot = pyquaternion.Quaternion.distance(q1, q2)
-                                    #t_rot = detPoses[i][3:] / np.linalg.norm(detPoses[i][3:])
-                                    #rot = rotGT / np.linalg.norm(rotGT)
-                                    #rot_t_mat = geometry.rotations.rotation_from_quaternion(t_rot)
-                                    #rot_mat = geometry.rotations.rotation_from_quaternion(rot)
-                                    #matd = geometry.rotations.geodesic_distance_for_rotations(rot_t_mat, rot_mat)
-                                    #print(dRot* 180/math.pi, matd* 180/math.pi)
-                                    #if not math.isnan(dRot):
-                                    #    angDif[s] += dRot
-                                    #    couPos[s] += 1
-                                    #    if dRot < 5.0:
-                                    #        less5[s] += 1
 
                                 else:
                                     falsePos.append(dC)
