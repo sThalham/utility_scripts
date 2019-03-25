@@ -491,9 +491,9 @@ if __name__ == "__main__":
     root = '/home/sthalham/data/renderings/linemod_BG'
     if dataset is 'tless':
         root = '/home/sthalham/data/renderings/tless_BG/patches'
-    target = '/home/sthalham/data/prepro/linemod_box3D_rgb_simplex/'
+    target = '/home/sthalham/data/prepro/linemod_box3D_rgd_full/'
     # [depth, normals, sensor, simplex, full]
-    method = 'simplex'
+    method = 'full'
     visu = False
     n_samples = 10000 # real=1214
     if dataset is 'tless':
@@ -601,6 +601,7 @@ if __name__ == "__main__":
                     cross = np.multiply(depthAug, scaCro)
                     dep_sca = cross.astype(np.uint8)
                     #cv2.imwrite(fileName, dep_sca)
+                    aug_xyz[:, :, 2] = dep_sca
                     cv2.imwrite(fileName, aug_xyz)
 
                 elif method == 'full':
@@ -633,7 +634,7 @@ if __name__ == "__main__":
                     dep_sca = cross.astype(np.uint8)
                     aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
                                                          for_vis=False)
-                    #aug_xyz[:,:,2] = dep_sca
+                    aug_xyz[:,:,2] = dep_sca
                     #cv2.imwrite(fileName, dep_sca)
                     cv2.imwrite(fileName, aug_xyz)
 

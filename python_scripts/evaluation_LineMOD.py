@@ -16,9 +16,8 @@ import copy
 import pickle
 from pycocotools import mask as cocomask
 import geometry
-#from icp import icp
-#from basicICP import icp_point_to_plane, icp_point_to_point_lm, icp_point_to_plane_lm
 import open3d
+from scipy import spatial
 
 # mAP
 # Precision = True positive / (True positive + False positive)
@@ -156,6 +155,121 @@ threeD_boxes[14, :, :] = np.array([[0.047, 0.0735, 0.0925],  # phone [94, 147, 1
                                      [-0.047, -0.0735, -0.0925],
                                      [-0.047, -0.0735, 0.0925]])
 
+model_radii = np.array([0.041, 0.0928, 0.0675, 0.0633, 0.0795, 0.052, 0.0508, 0.0853, 0.0445, 0.0543, 0.048, 0.05, 0.0862, 0.0888, 0.071])
+
+
+def transform_pts_Rt(pts, R, t):
+    """
+    Applies a rigid transformation to 3D points.
+
+    :param pts: nx3 ndarray with 3D points.
+    :param R: 3x3 rotation matrix.
+    :param t: 3x1 translation vector.
+    :return: nx3 ndarray with transformed 3D points.
+    """
+    assert(pts.shape[1] == 3)
+    pts_t = R.dot(pts.T) + t.reshape((3, 1))
+    return pts_t.T
+
+
+def reproj(K, R_est, t_est, R_gt, t_gt, pts):
+    """
+    reprojection error.
+    :param K intrinsic matrix
+    :param R_est, t_est: Estimated pose (3x3 rot. matrix and 3x1 trans. vector).
+    :param R_gt, t_gt: GT pose (3x3 rot. matrix and 3x1 trans. vector).
+    :param model: Object model given by a dictionary where item 'pts'
+    is nx3 ndarray with 3D model points.
+    :return: Error of pose_est w.r.t. pose_gt.
+    """
+    pts_est = transform_pts_Rt(pts, R_est, t_est)
+    pts_gt = transform_pts_Rt(pts, R_gt, t_gt)
+
+    pixels_est = K.dot(pts_est.T)
+    pixels_est = pixels_est.T
+    pixels_gt = K.dot(pts_gt.T)
+    pixels_gt = pixels_gt.T
+
+    n = pts.shape[0]
+    est = np.zeros((n, 2), dtype=np.float32);
+    est[:, 0] = np.divide(pixels_est[:, 0], pixels_est[:, 2])
+    est[:, 1] = np.divide(pixels_est[:, 1], pixels_est[:, 2])
+
+    gt = np.zeros((n, 2), dtype=np.float32);
+    gt[:, 0] = np.divide(pixels_gt[:, 0], pixels_gt[:, 2])
+    gt[:, 1] = np.divide(pixels_gt[:, 1], pixels_gt[:, 2])
+
+    e = np.linalg.norm(est - gt, axis=1).mean()
+    return e
+
+
+def add(R_est, t_est, R_gt, t_gt, pts):
+    """
+    Average Distance of Model Points for objects with no indistinguishable views
+    - by Hinterstoisser et al. (ACCV 2012).
+
+    :param R_est, t_est: Estimated pose (3x3 rot. matrix and 3x1 trans. vector).
+    :param R_gt, t_gt: GT pose (3x3 rot. matrix and 3x1 trans. vector).
+    :param model: Object model given by a dictionary where item 'pts'
+    is nx3 ndarray with 3D model points.
+    :return: Error of pose_est w.r.t. pose_gt.
+    """
+    pts_est = transform_pts_Rt(pts, R_est, t_est)
+    pts_gt = transform_pts_Rt(pts, R_gt, t_gt)
+    e = np.linalg.norm(pts_est - pts_gt, axis=1).mean()
+    return e
+
+
+def adi(R_est, t_est, R_gt, t_gt, pts):
+    """
+    Average Distance of Model Points for objects with indistinguishable views
+    - by Hinterstoisser et al. (ACCV 2012).
+
+    :param R_est, t_est: Estimated pose (3x3 rot. matrix and 3x1 trans. vector).
+    :param R_gt, t_gt: GT pose (3x3 rot. matrix and 3x1 trans. vector).
+    :param model: Object model given by a dictionary where item 'pts'
+    is nx3 ndarray with 3D model points.
+    :return: Error of pose_est w.r.t. pose_gt.
+    """
+    pts_est = transform_pts_Rt(pts, R_est, t_est)
+    pts_gt = transform_pts_Rt(pts, R_gt, t_gt)
+
+    # Calculate distances to the nearest neighbors from pts_gt to pts_est
+    nn_index = spatial.cKDTree(pts_est)
+    nn_dists, _ = nn_index.query(pts_gt, k=1)
+
+    e = nn_dists.mean()
+    return e
+
+
+def re(R_est, R_gt):
+    """
+    Rotational Error.
+
+    :param R_est: Rotational element of the estimated pose (3x1 vector).
+    :param R_gt: Rotational element of the ground truth pose (3x1 vector).
+    :return: Error of t_est w.r.t. t_gt.
+    """
+    assert(R_est.shape == R_gt.shape == (3, 3))
+    error_cos = 0.5 * (np.trace(R_est.dot(np.linalg.inv(R_gt))) - 1.0)
+    error_cos = min(1.0, max(-1.0, error_cos)) # Avoid invalid values due to numerical errors
+    error = math.acos(error_cos)
+    error = 180.0 * error / np.pi # [rad] -> [deg]
+    return error
+
+
+def te(t_est, t_gt):
+    """
+    Translational Error.
+
+    :param t_est: Translation element of the estimated pose (3x1 vector).
+    :param t_gt: Translation element of the ground truth pose (3x1 vector).
+    :return: Error of t_est w.r.t. t_gt.
+    """
+    assert(t_est.size == t_gt.size == 3)
+    error = np.linalg.norm(t_gt - t_est)
+    return error
+
 
 def project2img(img, obj):
 
@@ -196,35 +310,6 @@ def create_point_cloud(depth, fx, fy, cx, cy, ds):
     return cloud_final
 
 
-def re(R_est, R_gt):
-    """
-    Rotational Error.
-
-    :param R_est: Rotational element of the estimated pose (3x1 vector).
-    :param R_gt: Rotational element of the ground truth pose (3x1 vector).
-    :return: Error of t_est w.r.t. t_gt.
-    """
-    assert(R_est.shape == R_gt.shape == (3, 3))
-    error_cos = 0.5 * (np.trace(R_est.dot(np.linalg.inv(R_gt))) - 1.0)
-    error_cos = min(1.0, max(-1.0, error_cos)) # Avoid invalid values due to numerical errors
-    error = math.acos(error_cos)
-    error = 180.0 * error / np.pi # [rad] -> [deg]
-    return error
-
-
-def te(t_est, t_gt):
-    """
-    Translational Error.
-
-    :param t_est: Translation element of the estimated pose (3x1 vector).
-    :param t_gt: Translation element of the ground truth pose (3x1 vector).
-    :return: Error of t_est w.r.t. t_gt.
-    """
-    assert(t_est.size == t_gt.size == 3)
-    error = np.linalg.norm(t_gt - t_est)
-    return error
-
-
 def toPix_array(translation):
 
     xpix = ((translation[:, 0] * fxkin) / translation[:, 2]) + cxkin
@@ -232,8 +317,6 @@ def toPix_array(translation):
     #zpix = translation[2] * fxkin
 
     return np.stack((xpix, ypix), axis=1) #, zpix]
-
-
 
 
 def draw_axis(img, poses):
@@ -296,7 +379,8 @@ if __name__ == "__main__":
     root = '/home/sthalham/workspace/RetNetPose/'
     #jsons = root + '3Dbox_linemod.json'
     #root = '/home/sthalham/workspace/MMAssist_pipeline/RetinaNet/'
-    jsons = root + 'val_bbox_results.json'
+    #jsons = root + 'val_bbox_results.json'
+    jsons = root + 'rgd20_results.json'
     model_path = "/home/sthalham/data/LINEMOD/models/"
 
     dataset = 'linemod'
@@ -342,7 +426,6 @@ if __name__ == "__main__":
         depDif = []
 
     xyzD = []
-
     less5cm = []
     less10cm = []
     less15cm = []
@@ -362,6 +445,12 @@ if __name__ == "__main__":
     less15deg = []
     less20deg = []
     less25deg = []
+
+    rep_e = []
+    rep_less5 = []
+
+    add_e = []
+    add_less_d = []
 
     proImg = 0
 
@@ -399,7 +488,9 @@ if __name__ == "__main__":
 
             proImg = proImg + 1
             if proImg % 100 == 0:
-                print('Processing image ', proImg, ' / ', allImg)
+                print('----------------------------------------------------------------------------')
+                print('------------Processing image ', proImg, ' / ', allImg, ' -------------------')
+                print('----------------------------------------------------------------------------')
 
             imgname = ss
 
@@ -533,62 +624,16 @@ if __name__ == "__main__":
                                     #truePos = 1
                                     fnCur = 0
 
+                                    print('--------------------- BBox center as initial estimate -------------------')
                                     image_dep = cv2.imread(depImgPath, cv2.IMREAD_UNCHANGED)
-
                                     dep_val = image_dep[int(b1[1] + (detBoxes[i][3] * 0.5)), int(b1[0] + (detBoxes[i][2] * 0.5))] * 0.001
-                                    # dep_val = image_dep[int(y_o), int(x_o)] * 0.001
-                                    cls = dC
-                                    if cls == 1:
-                                        dep = dep_val + 0.041
-                                    elif cls == 2:
-                                        dep = dep_val + 0.0928
-                                    elif cls == 3:
-                                        dep = dep_val + 0.0675
-                                    elif cls == 4:
-                                        dep = dep_val + 0.0633
-                                    elif cls == 5:
-                                        dep = dep_val + 0.0795
-                                    elif cls == 6:
-                                        dep = dep_val + 0.052
-                                    elif cls == 7:
-                                        dep = dep_val + 0.0508
-                                    elif cls == 8:
-                                        dep = dep_val + 0.0853
-                                    elif cls == 9:
-                                        dep = dep_val + 0.0445
-                                    elif cls == 10:
-                                        dep = dep_val + 0.0543
-                                    elif cls == 11:
-                                        dep = dep_val + 0.048
-                                    elif cls == 12:
-                                        dep = dep_val + 0.05
-                                    elif cls == 13:
-                                        dep = dep_val + 0.0862
-                                    elif cls == 14:
-                                        dep = dep_val + 0.0888
-                                    elif cls == 15:
-                                        dep = dep_val + 0.071
+                                    dep = dep_val + model_radii[dC-1]
 
                                     x_o = (((b1[0] + (detBoxes[i][2] * 0.5)) - cxkin) * dep) / fxkin
                                     y_o = (((b1[1] + (detBoxes[i][3] * 0.5)) - cykin) * dep) / fykin
 
                                     irvec = np.array([0.0, 0.0, 0.0], dtype=np.float32)
                                     itvec = np.array([x_o, y_o, dep], dtype=np.float32)
-                                    xyz = te((np.array(gtPoses[j], dtype=np.float32) * 0.001), (itvec.T))
-                                    #print('gt: ', np.array(gtPoses[j], dtype=np.float32) * 0.001)
-                                    #print('est: ', itvec)
-                                    if not math.isnan(xyz):
-                                        xyzI.append(xyz)
-                                        if xyz < 0.05:
-                                            less5cmI.append(xyz)
-                                        if xyz < 0.1:
-                                            less10cmI.append(xyz)
-                                        if xyz < 0.15:
-                                            less15cmI.append(xyz)
-                                        if xyz < 0.2:
-                                            less20cmI.append(xyz)
-                                        if xyz < 0.25:
-                                            less25cmI.append(xyz)
 
                                     print('--------------------- PnP Pose Estimation -------------------')
                                     obj_points = np.ascontiguousarray(threeD_boxes[dC-1, :, :], dtype=np.float32)
@@ -602,8 +647,8 @@ if __name__ == "__main__":
                                                                               reprojectionError=8.0, confidence=0.99,
                                                                               flags=cv2.SOLVEPNP_ITERATIVE)
                                     rmat, _ = cv2.Rodrigues(orvec)
-                                    rd = re(np.array(gtRots[j], dtype=np.float32).reshape(3, 3), rmat)
-                                    xyz = te((np.array(gtPoses[j], dtype=np.float32)*0.001), (otvec.T))
+                                    #rd = re(np.array(gtRots[j], dtype=np.float32).reshape(3, 3), rmat)
+                                    #xyz = te((np.array(gtPoses[j], dtype=np.float32)*0.001), (otvec.T))
 
                                     print('--------------------- ICP refinement -------------------')
 
@@ -621,11 +666,17 @@ if __name__ == "__main__":
                                     guess[3, :] = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32).T
 
                                     reg_p2p =open3d.registration_icp(pcd_model, pcd_crop, 0.015, guess, open3d.TransformationEstimationPointToPoint())
-                                    rmat_refined = reg_p2p.transformation[:3, :3]
+                                    R_est = reg_p2p.transformation[:3, :3]
+                                    t_est = reg_p2p.transformation[:3, 3]
 
-                                    rd = re(np.array(gtRots[j], dtype=np.float32).reshape(3, 3), rmat_refined[:3, :3])
+                                    print('--------------------- Evaluate on Metrics -------------------')
+                                    R_gt = np.array(gtRots[j], dtype=np.float32).reshape(3, 3)
+                                    t_gt = np.array(gtPoses[j], dtype=np.float32) * 0.001
 
-                                    rot = tf3d.quaternions.mat2quat(rmat.dot(rd))
+                                    rd = re(R_gt, R_est)
+                                    xyz = te(t_gt, t_est)
+
+                                    rot = tf3d.quaternions.mat2quat(R_est)
                                     pose = np.concatenate((np.array(otvec[:,0], dtype=np.float32), np.array(rot, dtype=np.float32)), axis=0)
                                     posevis.append(pose)
 
@@ -633,27 +684,35 @@ if __name__ == "__main__":
                                         rotD.append(rd)
                                         if (rd ) < 5.0:
                                             less5deg.append(rd)
-                                        if (rd ) < 10.0:
-                                            less10deg.append(xyz)
-                                        if (rd ) < 15.0:
-                                            less15deg.append(xyz)
-                                        if (rd ) < 20.0:
-                                            less20deg.append(xyz)
-                                        if (rd ) < 25.0:
-                                            less25deg.append(xyz)
 
                                     if not math.isnan(xyz):
                                         xyzD.append(xyz)
                                         if xyz < 0.05:
                                             less5cm.append(xyz)
-                                        if xyz < 0.1:
-                                            less10cm.append(xyz)
-                                        if xyz < 0.15:
-                                            less15cm.append(xyz)
-                                        if xyz < 0.2:
-                                            less20cm.append(xyz)
-                                        if xyz < 0.25:
-                                            less25cm.append(xyz)
+
+                                    model_pts = np.asarray(pcd_model.points)
+
+                                    err_repr = reproj(K, R_est, t_est, R_gt, t_gt, model_pts)
+                                    print('repr error in pixel: ', err_repr)
+
+                                    if not math.isnan(err_repr):
+                                        rep_e.append(err_repr)
+                                        if err_repr < 5.0:
+                                            rep_less5.append(err_repr)
+
+                                    print('cls: ', dC)
+                                    if dC == 3 or dC == 7 or dC == 10 or dC == 11:
+                                        err_add = adi(R_est, t_est, R_gt, t_gt, model_pts)
+                                        print('adi: ', err_add)
+                                    else:
+                                        err_add = add(R_est, t_est, R_gt, t_gt, model_pts)
+                                        print('add: ', err_add)
+
+                                    print('add threshold: ', (model_radii[dC-1]*2)*0.1)
+                                    if not math.isnan(err_add):
+                                        add_e.append(err_add)
+                                        if err_add < (model_radii[dC-1]*2*0.1):
+                                            add_less_d.append(err_add)
 
                                 else:
                                     falsePos.append(dC)
@@ -988,38 +1047,44 @@ if __name__ == "__main__":
     dataset_xyz_diff = (sum(xyzD) / len(xyzD))
     #dataset_depth_diff = (sum(zD) / len(zD))
     less5cm = len(less5cm)/len(xyzD)
-    less10cm = len(less10cm) / len(xyzD)
-    less15cm = len(less15cm) / len(xyzD)
-    less20cm = len(less20cm) / len(xyzD)
-    less25cm = len(less25cm) / len(xyzD)
+    #less10cm = len(less10cm) / len(xyzD)
+    #less15cm = len(less15cm) / len(xyzD)
+    #less20cm = len(less20cm) / len(xyzD)
+    #less25cm = len(less25cm) / len(xyzD)
     less5deg = len(less5deg) / len(rotD)
-    less10deg = len(less10deg) / len(rotD)
-    less15deg = len(less15deg) / len(rotD)
-    less20deg = len(less20deg) / len(rotD)
-    less25deg = len(less25deg) / len(rotD)
+    #less10deg = len(less10deg) / len(rotD)
+    #less15deg = len(less15deg) / len(rotD)
+    #less20deg = len(less20deg) / len(rotD)
+    #less25deg = len(less25deg) / len(rotD)
+    less_repr_5 = len(rep_less5) / len(rep_e)
+    less_add_d = len(add_less_d) / len(add_e)
+
     #print('dataset recall: ', dataset_recall, '%')
     #print('dataset precision: ', dataset_precision, '%')
     print('linemod::percent below 5 cm: ', less5cm, '%')
-    print('linemod::percent below 10 cm: ', less10cm, '%')
-    print('linemod::percent below 15 cm: ', less15cm, '%')
-    print('linemod::percent below 20 cm: ', less20cm, '%')
-    print('linemod::percent below 25 cm: ', less25cm, '%')
+    #print('linemod::percent below 10 cm: ', less10cm, '%')
+    #print('linemod::percent below 15 cm: ', less15cm, '%')
+    #print('linemod::percent below 20 cm: ', less20cm, '%')
+    #print('linemod::percent below 25 cm: ', less25cm, '%')
     print('linemod::percent below 5 deg: ', less5deg, '%')
-    print('linemod::percent below 10 deg: ', less10deg, '%')
-    print('linemod::percent below 15 deg: ', less15deg, '%')
-    print('linemod::percent below 20 deg: ', less20deg, '%')
-    print('linemod::percent below 25 deg: ', less25deg, '%')
+    #print('linemod::percent below 10 deg: ', less10deg, '%')
+    #print('linemod::percent below 15 deg: ', less15deg, '%')
+    #print('linemod::percent below 20 deg: ', less20deg, '%')
+    #print('linemod::percent below 25 deg: ', less25deg, '%')
 
-    less5cmI = len(less5cmI) / len(xyzI)
-    less10cmI = len(less10cmI) / len(xyzI)
-    less15cmI = len(less15cmI) / len(xyzI)
-    less20cmI = len(less20cmI) / len(xyzI)
-    less25cmI = len(less25cmI) / len(xyzI)
-    print('linemod::percent below 5 cm: ', less5cmI, '%')
-    print('linemod::percent below 10 cm: ', less10cmI, '%')
-    print('linemod::percent below 15 cm: ', less15cmI, '%')
-    print('linemod::percent below 20 cm: ', less20cmI, '%')
-    print('linemod::percent below 25 cm: ', less25cmI, '%')
+    print('linemod::percent reprojection below 5 pixel: ', less_repr_5, '%')
+    print('linemod::percent ADD below model diameter: ', less_add_d, '%')
+
+    #less5cmI = len(less5cmI) / len(xyzI)
+    #less10cmI = len(less10cmI) / len(xyzI)
+    #less15cmI = len(less15cmI) / len(xyzI)
+    #less20cmI = len(less20cmI) / len(xyzI)
+    #less25cmI = len(less25cmI) / len(xyzI)
+    #print('linemod::percent below 5 cm: ', less5cmI, '%')
+    #print('linemod::percent below 10 cm: ', less10cmI, '%')
+    #print('linemod::percent below 15 cm: ', less15cmI, '%')
+    #print('linemod::percent below 20 cm: ', less20cmI, '%')
+    #print('linemod::percent below 25 cm: ', less25cmI, '%')
 
     # Precision = True positive / (True positive + False positive)
     # Recall = True positive / (True positive + False negative)

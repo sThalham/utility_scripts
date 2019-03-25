@@ -312,7 +312,7 @@ if __name__ == "__main__":
     else:
         raise ValueError('Specify the dataset correctly')
 
-    target = '/home/sthalham/data/prepro/val_linemod_cc/'
+    target = '/home/sthalham/data/prepro/val_linemod_cc_rgd/'
     # print(root)
     visu = False
 
@@ -455,7 +455,7 @@ if __name__ == "__main__":
                     scaCro = 255.0 / np.nanmax(depth_inp)
                     cross = np.multiply(depth_inp, scaCro)
                     dep_sca = cross.astype(np.uint8)
-                    #imgI[:, :, 2] = dep_sca
+                    imgI[:, :, 2] = dep_sca
 
                     cv2.imwrite(fileName, imgI)
                     print("storing image in : ", fileName)
