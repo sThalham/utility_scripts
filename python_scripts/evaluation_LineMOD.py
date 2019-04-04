@@ -7,17 +7,12 @@ import cv2
 import numpy as np
 import json
 import transforms3d as tf3d
-import copy
-from scipy import ndimage
 import math
-import datetime
-import pyquaternion
 import copy
-import pickle
-from pycocotools import mask as cocomask
-import geometry
 import open3d
 from scipy import spatial
+from pose_error import vsd, reproj, add, adi, re, te
+import ply_loader
 
 # mAP
 # Precision = True positive / (True positive + False positive)
@@ -158,136 +153,6 @@ threeD_boxes[14, :, :] = np.array([[0.047, 0.0735, 0.0925],  # phone [94, 147, 1
 model_radii = np.array([0.041, 0.0928, 0.0675, 0.0633, 0.0795, 0.052, 0.0508, 0.0853, 0.0445, 0.0543, 0.048, 0.05, 0.0862, 0.0888, 0.071])
 
 
-def transform_pts_Rt(pts, R, t):
-    """
-    Applies a rigid transformation to 3D points.
-
-    :param pts: nx3 ndarray with 3D points.
-    :param R: 3x3 rotation matrix.
-    :param t: 3x1 translation vector.
-    :return: nx3 ndarray with transformed 3D points.
-    """
-    assert(pts.shape[1] == 3)
-    pts_t = R.dot(pts.T) + t.reshape((3, 1))
-    return pts_t.T
-
-
-def reproj(K, R_est, t_est, R_gt, t_gt, pts):
-    """
-    reprojection error.
-    :param K intrinsic matrix
-    :param R_est, t_est: Estimated pose (3x3 rot. matrix and 3x1 trans. vector).
-    :param R_gt, t_gt: GT pose (3x3 rot. matrix and 3x1 trans. vector).
-    :param model: Object model given by a dictionary where item 'pts'
-    is nx3 ndarray with 3D model points.
-    :return: Error of pose_est w.r.t. pose_gt.
-    """
-    pts_est = transform_pts_Rt(pts, R_est, t_est)
-    pts_gt = transform_pts_Rt(pts, R_gt, t_gt)
-
-    pixels_est = K.dot(pts_est.T)
-    pixels_est = pixels_est.T
-    pixels_gt = K.dot(pts_gt.T)
-    pixels_gt = pixels_gt.T
-
-    n = pts.shape[0]
-    est = np.zeros((n, 2), dtype=np.float32);
-    est[:, 0] = np.divide(pixels_est[:, 0], pixels_est[:, 2])
-    est[:, 1] = np.divide(pixels_est[:, 1], pixels_est[:, 2])
-
-    gt = np.zeros((n, 2), dtype=np.float32);
-    gt[:, 0] = np.divide(pixels_gt[:, 0], pixels_gt[:, 2])
-    gt[:, 1] = np.divide(pixels_gt[:, 1], pixels_gt[:, 2])
-
-    e = np.linalg.norm(est - gt, axis=1).mean()
-    return e
-
-
-def add(R_est, t_est, R_gt, t_gt, pts):
-    """
-    Average Distance of Model Points for objects with no indistinguishable views
-    - by Hinterstoisser et al. (ACCV 2012).
-
-    :param R_est, t_est: Estimated pose (3x3 rot. matrix and 3x1 trans. vector).
-    :param R_gt, t_gt: GT pose (3x3 rot. matrix and 3x1 trans. vector).
-    :param model: Object model given by a dictionary where item 'pts'
-    is nx3 ndarray with 3D model points.
-    :return: Error of pose_est w.r.t. pose_gt.
-    """
-    pts_est = transform_pts_Rt(pts, R_est, t_est)
-    pts_gt = transform_pts_Rt(pts, R_gt, t_gt)
-    e = np.linalg.norm(pts_est - pts_gt, axis=1).mean()
-    return e
-
-
-def adi(R_est, t_est, R_gt, t_gt, pts):
-    """
-    Average Distance of Model Points for objects with indistinguishable views
-    - by Hinterstoisser et al. (ACCV 2012).
-
-    :param R_est, t_est: Estimated pose (3x3 rot. matrix and 3x1 trans. vector).
-    :param R_gt, t_gt: GT pose (3x3 rot. matrix and 3x1 trans. vector).
-    :param model: Object model given by a dictionary where item 'pts'
-    is nx3 ndarray with 3D model points.
-    :return: Error of pose_est w.r.t. pose_gt.
-    """
-    pts_est = transform_pts_Rt(pts, R_est, t_est)
-    pts_gt = transform_pts_Rt(pts, R_gt, t_gt)
-
-    # Calculate distances to the nearest neighbors from pts_gt to pts_est
-    nn_index = spatial.cKDTree(pts_est)
-    nn_dists, _ = nn_index.query(pts_gt, k=1)
-
-    e = nn_dists.mean()
-    return e
-
-
-def re(R_est, R_gt):
-    """
-    Rotational Error.
-
-    :param R_est: Rotational element of the estimated pose (3x1 vector).
-    :param R_gt: Rotational element of the ground truth pose (3x1 vector).
-    :return: Error of t_est w.r.t. t_gt.
-    """
-    assert(R_est.shape == R_gt.shape == (3, 3))
-    error_cos = 0.5 * (np.trace(R_est.dot(np.linalg.inv(R_gt))) - 1.0)
-    error_cos = min(1.0, max(-1.0, error_cos)) # Avoid invalid values due to numerical errors
-    error = math.acos(error_cos)
-    error = 180.0 * error / np.pi # [rad] -> [deg]
-    return error
-
-
-def te(t_est, t_gt):
-    """
-    Translational Error.
-
-    :param t_est: Translation element of the estimated pose (3x1 vector).
-    :param t_gt: Translation element of the ground truth pose (3x1 vector).
-    :return: Error of t_est w.r.t. t_gt.
-    """
-    assert(t_est.size == t_gt.size == 3)
-    error = np.linalg.norm(t_gt - t_est)
-    return error
-
-
-def project2img(img, obj):
-
-    mask = np.zeros(img.shape, dtype=np.bool)
-    xpix = ((obj[:, 0] * fxkin) / obj[:, 2]) + cxkin
-    ypix = ((obj[:, 1] * fykin) / obj[:, 2]) + cykin
-    for i in range(0, xpix.shape[0]):
-        x = int(xpix[i])
-        y = int(ypix[i])
-        if mask[y, x] == False:
-            img[y, x] = obj[i,2] * 1000.0
-            mask[y, x] = True
-        elif (obj[i, 2]*1000.0) < img[y, x]:
-            img[y, x] = obj[i, 2]*1000.0
-
-    return img
-
-
 def create_point_cloud(depth, fx, fy, cx, cy, ds):
 
     rows, cols = depth.shape
@@ -381,70 +246,31 @@ if __name__ == "__main__":
     #root = '/home/sthalham/workspace/MMAssist_pipeline/RetinaNet/'
     jsons = root + 'val_bbox_results.json'
     #jsons = root + 'rgd20_results.json'
-    model_path = "/home/sthalham/data/LINEMOD/models_ply/"
+    model_path = "/home/sthalham/data/LINEMOD/models/"
 
-    dataset = 'linemod'
     visu = False
 
     json_data = open(jsons).read()
     data = json.loads(json_data)
 
-
     testData = '/home/sthalham/data/LINEMOD/test/'
-    #if dataset == 'tless':
-    #    testData = '/home/sthalham/data/t-less_v2/test_primesense/'
-
     sub = os.listdir(testData)
 
     absObjs = 0
 
-    if dataset is 'linemod':
-        gtCatLst = [0] * 16
-        detCatLst = [0] * 16
-        falsePosLst = [0] * 16
-        falseNegLst = [0] * 16
-        angDif = [0] * 16
-        couPos = [0] * 16
-        less5 = [0] * 16
-        detFrac = [False] * 16
-        posAng = 0
-        posDif = []
-        depDif = []
-        allImg = 18273
-    elif dataset is 'tless':
-        gtCatLst = [0] * 31
-        detCatLst = [0] * 31
-        falsePosLst = [0] * 31
-        falseNegLst = [0] * 31
-        allImg = 7600
-        angDif = []
-        posDif = []
-        depDif = []
-    else:
-        angDif = []
-        posDif = []
-        depDif = []
+    gtCatLst = [0] * 16
+    detCatLst = [0] * 16
+    falsePosLst = [0] * 16
+    falseNegLst = [0] * 16
+
+    detFrac = [False] * 16
+    allImg = 18273
 
     xyzD = []
     less5cm = []
-    less10cm = []
-    less15cm = []
-    less20cm = []
-    less25cm = []
-
-    xyzI = []
-    less5cmI = []
-    less10cmI = []
-    less15cmI = []
-    less20cmI = []
-    less25cmI = []
-
     rotD = []
     less5deg = []
-    less10deg = []
-    less15deg = []
-    less20deg = []
-    less25deg = []
+    less5 = []
 
     rep_e = []
     rep_less5 = []
@@ -452,14 +278,17 @@ if __name__ == "__main__":
     add_e = []
     add_less_d = []
 
+    vsd_e = []
+    vsd_less_t = []
+
     proImg = 0
 
     for s in sub:
         print(s)
 
         #if s == '15' or s == '13' or s == '06' or s == '01' or s == '09' or s == '02' or s == '07' or s == '04' or s == '12' or s == '08' or s == '11':
-        #if s != '11':
-        #    continue
+        if s != '14':
+            continue
 
         rgbPath = testData + s + "/rgb/"
         depPath = testData + s + "/depth/"
@@ -467,8 +296,16 @@ if __name__ == "__main__":
 
         # load mesh and transform
         ply_path = model_path + 'obj_' + s + '.ply'
-        pcd_model = open3d.read_point_cloud(ply_path)
-        pcd_model.paint_uniform_color(np.array([0.0, 0.0, 0.99]))
+        #pcd_model = open3d.read_point_cloud(ply_path)
+        #pcd_model.paint_uniform_color(np.array([0.0, 0.0, 0.99]))
+        model_vsd = ply_loader.load_ply(ply_path)
+        pcd_model = open3d.PointCloud()
+        pcd_model.points = open3d.Vector3dVector(model_vsd['pts'])
+        open3d.estimate_normals(pcd_model, search_param=open3d.KDTreeSearchParamHybrid(
+            radius=0.1, max_nn=30))
+        #open3d.draw_geometries([pcd_model])
+        model_vsd_mm = copy.deepcopy(model_vsd)
+        model_vsd_mm['pts'] = model_vsd_mm['pts'] * 1000.0
 
         with open(gtPath, 'r') as streamGT:
             gtYML = yaml.load(streamGT)
@@ -523,18 +360,11 @@ if __name__ == "__main__":
             gtPoses = []
             gtRots = []
             for gt in gtImg:
-                if dataset is 'linemod':
-                    if gt['obj_id'] == s:
-                        gtBoxes.append(gt['obj_bb'])
-                        gtCats.append(gt['obj_id'])
-                        gtPoses.append(gt['cam_t_m2c'])
-                        gtRots.append(gt["cam_R_m2c"])
-
-                else:
-                     gtCats.append(gt['obj_id'])
-                     gtBoxes.append(gt['obj_bb'])
-                     gtPoses.append(gt['cam_t_m2c'])
-                     gtRots.append(gt["cam_R_m2c"])
+                if gt['obj_id'] == s:
+                    gtBoxes.append(gt['obj_bb'])
+                    gtCats.append(gt['obj_id'])
+                    gtPoses.append(gt['cam_t_m2c'])
+                    gtRots.append(gt["cam_R_m2c"])
 
             '''
             img = cv2.imread(depImgPath, -1)
@@ -572,23 +402,14 @@ if __name__ == "__main__":
             for det in data:
                 if det['image_id'] == img_id:
                     detIMG = det['image_id']
-                    if dataset == 'linemod':
-                        if det['category_id'] == s:
-                            #if det['score'] > 0.55:
-                            detBoxes.append(det['bbox'])
-                            detCats.append(det['category_id'])
-                            detSco.append(det['score'])
-                            detPoses.append(det['pose'])
-                            #detSeg.append(det['segmentation'])
-                            #print(det['pose'])
-
-                    else:
-                        if det['score'] > 0.5:
-                            detBoxes.append(det['bbox'])
-                            detCats.append(det['category_id'])
-                            detSco.append(det['score'])
-                            detPoses.append(det['pose'])
-                            #detSeg.append(det['segmentation'])
+                    if det['category_id'] == s:
+                        #if det['score'] > 0.55:
+                        detBoxes.append(det['bbox'])
+                        detCats.append(det['category_id'])
+                        detSco.append(det['score'])
+                        detPoses.append(det['pose'])
+                        #detSeg.append(det['segmentation'])
+                        #print(det['pose'])
 
             #temp = False
             #if temp == True:
@@ -600,117 +421,128 @@ if __name__ == "__main__":
 
             #else:
             elif detIMG:
-                if dataset is 'linemod':
-                    detBoxes = [detBoxes[detCats.index(s)]]
-                    detSco = [detSco[detCats.index(s)]]
-                    detCats = [detCats[detCats.index(s)]]
-                    detPoses = [detPoses[detCats.index(s)]]
-                    #detFrac[s] = True
+                detBoxes = [detBoxes[detCats.index(s)]]
+                detSco = [detSco[detCats.index(s)]]
+                detCats = [detCats[detCats.index(s)]]
+                detPoses = [detPoses[detCats.index(s)]]
+                #detFrac[s] = True
 
-                    falsePos = []
-                    truePos = []
-                    #truePos = 0
-                    fnCur = 1
-                    for i, dC in enumerate(detCats):
-                        for j, gC in enumerate(gtCats):
-                            if dC is gC:
+                falsePos = []
+                truePos = []
+                #truePos = 0
+                fnCur = 1
+                for i, dC in enumerate(detCats):
+                    for j, gC in enumerate(gtCats):
+                        if dC is gC:
 
-                                b1 = np.array([detBoxes[i][0], detBoxes[i][1], detBoxes[i][0] + detBoxes[i][2], detBoxes[i][1] + detBoxes[i][3]])
-                                b2 = np.array([gtBoxes[j][0], gtBoxes[j][1], gtBoxes[j][0] + gtBoxes[j][2], gtBoxes[j][1] + gtBoxes[j][3]])
-                                IoU = boxoverlap(b1, b2)
-                                # occurences of 2 or more instances not possible in LINEMOD
-                                if IoU > 0.5:
-                                    truePos.append(dC)
-                                    #truePos = 1
-                                    fnCur = 0
+                            b1 = np.array([detBoxes[i][0], detBoxes[i][1], detBoxes[i][0] + detBoxes[i][2], detBoxes[i][1] + detBoxes[i][3]])
+                            b2 = np.array([gtBoxes[j][0], gtBoxes[j][1], gtBoxes[j][0] + gtBoxes[j][2], gtBoxes[j][1] + gtBoxes[j][3]])
+                            IoU = boxoverlap(b1, b2)
+                            # occurences of 2 or more instances not possible in LINEMOD
+                            if IoU > 0.5:
+                                truePos.append(dC)
+                                fnCur = 0
 
-                                    print('--------------------- BBox center as initial estimate -------------------')
-                                    image_dep = cv2.imread(depImgPath, cv2.IMREAD_UNCHANGED)
-                                    dep_val = image_dep[int(b1[1] + (detBoxes[i][3] * 0.5)), int(b1[0] + (detBoxes[i][2] * 0.5))] * 0.001
-                                    dep = dep_val + model_radii[dC-1]
+                                print('--------------------- BBox center as initial estimate -------------------')
+                                image_dep = cv2.imread(depImgPath, cv2.IMREAD_UNCHANGED)
+                                dep_val = image_dep[int(b1[1] + (detBoxes[i][3] * 0.5)), int(b1[0] + (detBoxes[i][2] * 0.5))] * 0.001
+                                dep = dep_val + model_radii[dC-1]
 
-                                    x_o = (((b1[0] + (detBoxes[i][2] * 0.5)) - cxkin) * dep) / fxkin
-                                    y_o = (((b1[1] + (detBoxes[i][3] * 0.5)) - cykin) * dep) / fykin
+                                x_o = (((b1[0] + (detBoxes[i][2] * 0.5)) - cxkin) * dep) / fxkin
+                                y_o = (((b1[1] + (detBoxes[i][3] * 0.5)) - cykin) * dep) / fykin
 
-                                    irvec = np.array([0.0, 0.0, 0.0], dtype=np.float32)
-                                    itvec = np.array([x_o, y_o, dep], dtype=np.float32)
+                                irvec = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+                                itvec = np.array([x_o, y_o, dep], dtype=np.float32)
 
-                                    print('--------------------- PnP Pose Estimation -------------------')
-                                    obj_points = np.ascontiguousarray(threeD_boxes[dC-1, :, :], dtype=np.float32)
-                                    est_points = np.ascontiguousarray(np.asarray(detPoses[i], dtype=np.float32).T, dtype=np.float32).reshape(
+                                print('--------------------- PnP Pose Estimation -------------------')
+                                obj_points = np.ascontiguousarray(threeD_boxes[dC-1, :, :], dtype=np.float32)
+                                est_points = np.ascontiguousarray(np.asarray(detPoses[i], dtype=np.float32).T, dtype=np.float32).reshape(
                                         (8, 1, 2))
 
-                                    K = np.float32([fxkin, 0., cxkin, 0., fykin, cykin, 0., 0., 1.]).reshape(3, 3)
-                                    retval, orvec, otvec, inliers = cv2.solvePnPRansac(objectPoints=obj_points,
+                                K = np.float32([fxkin, 0., cxkin, 0., fykin, cykin, 0., 0., 1.]).reshape(3, 3)
+                                retval, orvec, otvec, inliers = cv2.solvePnPRansac(objectPoints=obj_points,
                                                                               imagePoints=est_points, cameraMatrix=K,
                                                                               distCoeffs=None, rvec=None, tvec=itvec, useExtrinsicGuess=True, iterationsCount=100,
                                                                               reprojectionError=8.0, confidence=0.99,
                                                                               flags=cv2.SOLVEPNP_ITERATIVE)
-                                    rmat, _ = cv2.Rodrigues(orvec)
-                                    #rd = re(np.array(gtRots[j], dtype=np.float32).reshape(3, 3), rmat)
-                                    #xyz = te((np.array(gtPoses[j], dtype=np.float32)*0.001), (otvec.T))
-                                    print('--------------------- ICP refinement -------------------')
+                                rmat, _ = cv2.Rodrigues(orvec)
+                                #rd = re(np.array(gtRots[j], dtype=np.float32).reshape(3, 3), rmat)
+                                #xyz = te((np.array(gtPoses[j], dtype=np.float32)*0.001), (otvec.T))
+                                print('--------------------- ICP refinement -------------------')
 
-                                    pcd_img = create_point_cloud(image_dep, fxkin, fykin, cxkin, cykin, 0.001)
-                                    pcd_img = pcd_img.reshape((480, 640, 3))[int(b1[1]):int(b1[3]), int(b1[0]):int(b1[2]), :]
-                                    pcd_img = pcd_img.reshape((pcd_img.shape[0]*pcd_img.shape[1], 3))
-                                    pcd_crop = open3d.PointCloud()
-                                    pcd_crop.points = open3d.Vector3dVector(pcd_img)
-                                    pcd_crop.paint_uniform_color(np.array([0.99, 0.0, 0.00]))
-                                    #open3d.draw_geometries([pcd_crop, pcd_model])
+                                pcd_img = create_point_cloud(image_dep, fxkin, fykin, cxkin, cykin, 0.001)
+                                pcd_img = pcd_img.reshape((480, 640, 3))[int(b1[1]):int(b1[3]), int(b1[0]):int(b1[2]), :]
+                                pcd_img = pcd_img.reshape((pcd_img.shape[0]*pcd_img.shape[1], 3))
+                                pcd_crop = open3d.PointCloud()
+                                pcd_crop.points = open3d.Vector3dVector(pcd_img)
+                                open3d.estimate_normals(pcd_crop, search_param=open3d.KDTreeSearchParamHybrid(
+                                    radius=0.02, max_nn=30))
 
-                                    guess = np.zeros((4, 4), dtype=np.float32)
-                                    guess[:3, :3] = rmat
-                                    guess[:3, 3] = itvec.T
-                                    guess[3, :] = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32).T
+                                #pcd_crop.paint_uniform_color(np.array([0.99, 0.0, 0.00]))
+                                #open3d.draw_geometries([pcd_crop])
 
-                                    reg_p2p =open3d.registration_icp(pcd_model, pcd_crop, 0.015, guess, open3d.TransformationEstimationPointToPoint())
-                                    R_est = reg_p2p.transformation[:3, :3]
-                                    t_est = reg_p2p.transformation[:3, 3]
+                                guess = np.zeros((4, 4), dtype=np.float32)
+                                guess[:3, :3] = rmat
+                                guess[:3, 3] = itvec.T
+                                guess[3, :] = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32).T
 
-                                    print('--------------------- Evaluate on Metrics -------------------')
-                                    R_gt = np.array(gtRots[j], dtype=np.float32).reshape(3, 3)
-                                    t_gt = np.array(gtPoses[j], dtype=np.float32) * 0.001
+                                reg_p2p =open3d.registration_icp(pcd_model, pcd_crop, 0.015, guess, open3d.TransformationEstimationPointToPlane())
+                                R_est = reg_p2p.transformation[:3, :3]
+                                t_est = reg_p2p.transformation[:3, 3]
 
-                                    rd = re(R_gt, R_est)
-                                    xyz = te(t_gt, t_est.T)
+                                print('--------------------- Evaluate on Metrics -------------------')
+                                R_gt = np.array(gtRots[j], dtype=np.float32).reshape(3, 3)
+                                t_gt = np.array(gtPoses[j], dtype=np.float32) * 0.001
 
-                                    rot = tf3d.quaternions.mat2quat(R_est)
-                                    pose = np.concatenate((np.array(otvec[:,0], dtype=np.float32), np.array(rot, dtype=np.float32)), axis=0)
-                                    posevis.append(pose)
+                                rd = re(R_gt, R_est)
+                                xyz = te(t_gt, t_est.T)
 
-                                    if not math.isnan(rd):
-                                        rotD.append(rd)
-                                        if (rd ) < 5.0:
-                                            less5deg.append(rd)
+                                rot = tf3d.quaternions.mat2quat(R_est)
+                                pose = np.concatenate((np.array(otvec[:,0], dtype=np.float32), np.array(rot, dtype=np.float32)), axis=0)
+                                posevis.append(pose)
 
-                                    if not math.isnan(xyz):
-                                        xyzD.append(xyz)
-                                        if xyz < 0.05:
-                                            less5cm.append(xyz)
+                                if not math.isnan(rd):
+                                    rotD.append(rd)
+                                    if rd < 5.0 and xyz < 0.05:
+                                        less5.append(rd)
 
-                                    model_pts = np.asarray(pcd_model.points)
+                                #if not math.isnan(xyz):
+                                #    xyzD.append(xyz)
+                                #    if xyz < 0.05:
+                                #        less5cm.append(xyz)
 
-                                    err_repr = reproj(K, R_est, t_est, R_gt, t_gt, model_pts)
+                                #model_pts = np.asarray(pcd_model.points)
 
-                                    if not math.isnan(err_repr):
-                                        rep_e.append(err_repr)
-                                        if err_repr < 5.0:
-                                            rep_less5.append(err_repr)
+                                err_vsd = vsd(R_est, t_est * 1000.0, R_gt, t_gt * 1000.0, model_vsd_mm, image_dep, K, 0.3, 20.0)
+                                print('vsd: ', err_vsd)
+                                if not math.isnan(err_vsd):
+                                    vsd_e.append(err_vsd)
+                                    if err_vsd < 0.3:
+                                        vsd_less_t.append(err_vsd)
 
-                                    if dC == 3 or dC == 7 or dC == 10 or dC == 11:
-                                        err_add = adi(R_est, t_est, R_gt, t_gt, model_pts)
+                                err_repr = reproj(K, R_est, t_est, R_gt, t_gt, model_vsd["pts"])
+                                print('repr: ', err_repr)
 
-                                    else:
-                                        err_add = add(R_est, t_est, R_gt, t_gt, model_pts)
+                                if not math.isnan(err_repr):
+                                    rep_e.append(err_repr)
+                                    if err_repr < 5.0:
+                                        rep_less5.append(err_repr)
 
-                                    if not math.isnan(err_add):
-                                        add_e.append(err_add)
-                                        if err_add < (model_radii[dC-1]*2*0.1):
-                                            add_less_d.append(err_add)
+                                if dC == 3 or dC == 7 or dC == 10 or dC == 11:
+                                    err_add = adi(R_est, t_est, R_gt, t_gt, model_vsd["pts"])
 
                                 else:
-                                    falsePos.append(dC)
+                                    err_add = add(R_est, t_est, R_gt, t_gt, model_vsd["pts"])
+
+                                print('3Dpose: ', err_add, 'th: ', model_radii[dC-1]*2*0.1)
+
+                                if not math.isnan(err_add):
+                                    add_e.append(err_add)
+                                    if err_add < (model_radii[dC-1]*2*0.1):
+                                        add_less_d.append(err_add)
+
+                            else:
+                                falsePos.append(dC)
 
 
                             #else:
@@ -720,100 +552,12 @@ if __name__ == "__main__":
                     tp = truePos
                     fn += fnCur
 
-                else:
-                    ind2rem = np.array([], dtype=np.uint8)
-
-                    cleBoxes = []
-                    cleSco = []
-                    cleCats = []
-                    #clePoses = []
-                    cleSeg = []
-                    for i, sco in enumerate(detSco):
-                        if sco > 0.5:
-                            cleBoxes.append(detBoxes[i])
-                            cleSco.append(detSco[i])
-                            cleCats.append(detCats[i])
-                            #clePoses.append(detPoses[i])
-                            #cleSeg.append(detSeg[i])
-
-                    detBoxes = cleBoxes
-                    detSco = cleSco
-                    detCats = cleCats
-                    #detPoses = clePoses
-                    #detSeg = cleSeg
-
-                    # find overlaping boxes
-                    '''
-                    for i, iC in enumerate(detCats):
-                        for j, jC in enumerate(detCats):
-                            if i is not j:
-                                b1 = np.array([detBoxes[i][0], detBoxes[i][1], detBoxes[i][0] + detBoxes[i][2],
-                                               detBoxes[i][1] + detBoxes[i][3]])
-                                b2 = np.array([detBoxes[j][0], detBoxes[j][1], detBoxes[j][0] + detBoxes[j][2],
-                                               detBoxes[j][1] + detBoxes[j][3]])
-                                IoU = boxoverlap(b1, b2)
-
-                                # occurences of 2 or more instances not possible in LINEMOD
-                                if IoU > 0.5:
-                                    #print('IoU: ', IoU)
-                                    #print(detSco[i], detSco[j])
-                                    #print(iC, jC, i, j)
-                                    if detSco[i] > detSco[j]:
-
-                                        ind2rem = np.append(ind2rem, j)
-                    # remove overlaping boxes
-                    #tempCats = detCats
-                    ind2rem = np.unique(ind2rem)
-                    ind2rem.sort()
-                    for ind in reversed(ind2rem):
-                        del detCats[ind]
-                        del detBoxes[ind]
-                        #del detPoses[ind]
-                    '''
-
-                    falsePos = []
-                    truePos = []
-                    for i, dC in enumerate(detCats):
-                        for j, gC in enumerate(gtCats):
-                            if dC is gC:
-                                b1 = np.array([detBoxes[i][0], detBoxes[i][1], detBoxes[i][0] + detBoxes[i][2],
-                                               detBoxes[i][1] + detBoxes[i][3]])
-                                b2 = np.array([gtBoxes[j][0], gtBoxes[j][1], gtBoxes[j][0] + gtBoxes[j][2],
-                                               gtBoxes[j][1] + gtBoxes[j][3]])
-                                IoU = boxoverlap(b1, b2)
-                                # print('IoU: ', IoU)
-                                # occurences of 2 or more instances not possible in LINEMOD
-                                if IoU > 0.5:
-                                    truePos.append(dC)
-                                else:
-                                    falsePos.append(dC)
-                            else:
-                                if dataset is not 'linemod':
-                                    falsePos.append(dC)
-
-                    fp = falsePos
-                    tp = truePos
-                    fn = listDiff(gtCats, tp)
-
-                # indexing with "target category" only possible due to linemod annotation
-                if dataset == 'linemod':
-
-                    gtCatLst[s] = gtCatLst[s] + 1
-                    detCatLst[s] = detCatLst[s] + len(tp)
-                    #detCatLst[s] = detCatLst[s] + tp
-                    falsePosLst[s] = falsePosLst[s] + len(fp)
-                    #falseNegLst[s] = falseNegLst[s] + fn
-                    #print(falseNegLst[s])
-
-                else:
-                    for i, gt in enumerate(gtCats):
-                        gtCatLst[gt] = gtCatLst[gt] + 1
-                    for i, pos in enumerate(tp):
-                        detCatLst[pos] = detCatLst[pos] +1
-                    for i, neg in enumerate(fp):
-                        falsePosLst[neg] = falsePosLst[neg] + 1
-                    #for i, fneg in enumerate(fn):
-                    #    falseNegLst[fneg] = falseNegLst[fneg] + 1
+                gtCatLst[s] = gtCatLst[s] + 1
+                detCatLst[s] = detCatLst[s] + len(tp)
+                #detCatLst[s] = detCatLst[s] + tp
+                falsePosLst[s] = falsePosLst[s] + len(fp)
+                #falseNegLst[s] = falseNegLst[s] + fn
+                #print(falseNegLst[s])
 
                 # VISUALIZATION
                 if visu == True:
@@ -1039,58 +783,49 @@ if __name__ == "__main__":
         #print('STOP')
 
 
-    dataset_xyz_diff = (sum(xyzD) / len(xyzD))
+    #dataset_xyz_diff = (sum(xyzD) / len(xyzD))
     #dataset_depth_diff = (sum(zD) / len(zD))
-    less5cm = len(less5cm)/len(xyzD)
+    #less5cm = len(less5cm)/len(xyzD)
     #less10cm = len(less10cm) / len(xyzD)
     #less15cm = len(less15cm) / len(xyzD)
     #less20cm = len(less20cm) / len(xyzD)
     #less25cm = len(less25cm) / len(xyzD)
-    less5deg = len(less5deg) / len(rotD)
+    #less5deg = len(less5deg) / len(rotD)
     #less10deg = len(less10deg) / len(rotD)
     #less15deg = len(less15deg) / len(rotD)
     #less20deg = len(less20deg) / len(rotD)
     #less25deg = len(less25deg) / len(rotD)
-    less_repr_5 = len(rep_less5) / len(rep_e)
-    less_add_d = len(add_less_d) / len(add_e)
+    less_55 = len(less5) / len(rotD) * 100.0
+    less_repr_5 = len(rep_less5) / len(rep_e) * 100.0
+    less_add_d = len(add_less_d) / len(add_e) * 100.0
+    less_vsd_t = len(vsd_less_t) / len(vsd_e) * 100.0
 
     #print('dataset recall: ', dataset_recall, '%')
     #print('dataset precision: ', dataset_precision, '%')
-    print('linemod::percent below 5 cm: ', less5cm, '%')
+    #print('linemod::percent below 5 cm: ', less5cm, '%')
     #print('linemod::percent below 10 cm: ', less10cm, '%')
     #print('linemod::percent below 15 cm: ', less15cm, '%')
     #print('linemod::percent below 20 cm: ', less20cm, '%')
     #print('linemod::percent below 25 cm: ', less25cm, '%')
-    print('linemod::percent below 5 deg: ', less5deg, '%')
+    #print('linemod::percent below 5 deg: ', less5deg, '%')
     #print('linemod::percent below 10 deg: ', less10deg, '%')
     #print('linemod::percent below 15 deg: ', less15deg, '%')
     #print('linemod::percent below 20 deg: ', less20deg, '%')
     #print('linemod::percent below 25 deg: ', less25deg, '%')
 
+    print('linemod::percent poses below 5cm and 5°: ', less_55, '%')
+    print('linemod::percent VSD below tau 0.02m: ',  less_vsd_t, '%')
     print('linemod::percent reprojection below 5 pixel: ', less_repr_5, '%')
     print('linemod::percent ADD below model diameter: ', less_add_d, '%')
 
-    #less5cmI = len(less5cmI) / len(xyzI)
-    #less10cmI = len(less10cmI) / len(xyzI)
-    #less15cmI = len(less15cmI) / len(xyzI)
-    #less20cmI = len(less20cmI) / len(xyzI)
-    #less25cmI = len(less25cmI) / len(xyzI)
-    #print('linemod::percent below 5 cm: ', less5cmI, '%')
-    #print('linemod::percent below 10 cm: ', less10cmI, '%')
-    #print('linemod::percent below 15 cm: ', less15cmI, '%')
-    #print('linemod::percent below 20 cm: ', less20cmI, '%')
-    #print('linemod::percent below 25 cm: ', less25cmI, '%')
 
     # Precision = True positive / (True positive + False positive)
     # Recall = True positive / (True positive + False negative)
-    if dataset is 'linemod':
-        detPre = [0] * 16
-        detRec = [0] * 16
-        detRot = [0] * 16
-        detless5 = [0] * 16
-    elif dataset is 'tless':
-        detPre = [0] * 31
-        detRec = [0] * 31
+
+    detPre = [0] * 16
+    detRec = [0] * 16
+    detRot = [0] * 16
+    detless5 = [0] * 16
 
     np.set_printoptions(precision=2)
     for ind, cat in enumerate(gtCatLst):

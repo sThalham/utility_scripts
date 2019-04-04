@@ -13,12 +13,8 @@ import transforms3d as tf3d
 import time
 import itertools
 import random
-import tracemalloc
-from noise import pnoise2, snoise2
 import pyfastnoisesimd as fns
 import geometry
-from pycocotools import mask as cocomask
-import pycocotools
 
 import OpenEXR, Imath
 from pathlib import Path
