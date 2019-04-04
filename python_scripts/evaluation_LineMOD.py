@@ -379,9 +379,9 @@ if __name__ == "__main__":
     root = '/home/sthalham/workspace/RetNetPose/'
     #jsons = root + '3Dbox_linemod.json'
     #root = '/home/sthalham/workspace/MMAssist_pipeline/RetinaNet/'
-    #jsons = root + 'val_bbox_results.json'
-    jsons = root + 'rgd20_results.json'
-    model_path = "/home/sthalham/data/LINEMOD/models/"
+    jsons = root + 'val_bbox_results.json'
+    #jsons = root + 'rgd20_results.json'
+    model_path = "/home/sthalham/data/LINEMOD/models_ply/"
 
     dataset = 'linemod'
     visu = False
@@ -643,13 +643,12 @@ if __name__ == "__main__":
                                     K = np.float32([fxkin, 0., cxkin, 0., fykin, cykin, 0., 0., 1.]).reshape(3, 3)
                                     retval, orvec, otvec, inliers = cv2.solvePnPRansac(objectPoints=obj_points,
                                                                               imagePoints=est_points, cameraMatrix=K,
-                                                                              distCoeffs=None, rvec=irvec, tvec=itvec, useExtrinsicGuess=True,iterationsCount=100,
+                                                                              distCoeffs=None, rvec=None, tvec=itvec, useExtrinsicGuess=True, iterationsCount=100,
                                                                               reprojectionError=8.0, confidence=0.99,
                                                                               flags=cv2.SOLVEPNP_ITERATIVE)
                                     rmat, _ = cv2.Rodrigues(orvec)
                                     #rd = re(np.array(gtRots[j], dtype=np.float32).reshape(3, 3), rmat)
                                     #xyz = te((np.array(gtPoses[j], dtype=np.float32)*0.001), (otvec.T))
-
                                     print('--------------------- ICP refinement -------------------')
 
                                     pcd_img = create_point_cloud(image_dep, fxkin, fykin, cxkin, cykin, 0.001)
@@ -674,7 +673,7 @@ if __name__ == "__main__":
                                     t_gt = np.array(gtPoses[j], dtype=np.float32) * 0.001
 
                                     rd = re(R_gt, R_est)
-                                    xyz = te(t_gt, t_est)
+                                    xyz = te(t_gt, t_est.T)
 
                                     rot = tf3d.quaternions.mat2quat(R_est)
                                     pose = np.concatenate((np.array(otvec[:,0], dtype=np.float32), np.array(rot, dtype=np.float32)), axis=0)
@@ -693,22 +692,18 @@ if __name__ == "__main__":
                                     model_pts = np.asarray(pcd_model.points)
 
                                     err_repr = reproj(K, R_est, t_est, R_gt, t_gt, model_pts)
-                                    print('repr error in pixel: ', err_repr)
 
                                     if not math.isnan(err_repr):
                                         rep_e.append(err_repr)
                                         if err_repr < 5.0:
                                             rep_less5.append(err_repr)
 
-                                    print('cls: ', dC)
                                     if dC == 3 or dC == 7 or dC == 10 or dC == 11:
                                         err_add = adi(R_est, t_est, R_gt, t_gt, model_pts)
-                                        print('adi: ', err_add)
+
                                     else:
                                         err_add = add(R_est, t_est, R_gt, t_gt, model_pts)
-                                        print('add: ', err_add)
 
-                                    print('add threshold: ', (model_radii[dC-1]*2)*0.1)
                                     if not math.isnan(err_add):
                                         add_e.append(err_add)
                                         if err_add < (model_radii[dC-1]*2*0.1):
@@ -828,13 +823,13 @@ if __name__ == "__main__":
 
                     img = cv2.imread(rgbImgPath, -1)
                     img_gt = copy.deepcopy(img)
-                    for i, bb in enumerate(detBoxes):
+                    #for i, bb in enumerate(detBoxes):
                     #for i, bb in enumerate(gtBoxes):
                         #print(bb)
-                        cv2.rectangle(img, (int(bb[0]), int(bb[1])), (int(bb[0]) + int(bb[2]), int(bb[1]) + int(bb[3])),
-                                          (0, 0, 0), 3)
-                        cv2.rectangle(img, (int(bb[0]), int(bb[1])), (int(bb[0]) + int(bb[2]), int(bb[1]) + int(bb[3])),
-                                          (250, 215, 10), 2)
+                        #cv2.rectangle(img, (int(bb[0]), int(bb[1])), (int(bb[0]) + int(bb[2]), int(bb[1]) + int(bb[3])),
+                        #                  (0, 0, 0), 3)
+                        #cv2.rectangle(img, (int(bb[0]), int(bb[1])), (int(bb[0]) + int(bb[2]), int(bb[1]) + int(bb[3])),
+                        #                  (250, 215, 10), 2)
                         #if i==7 or i==2:
                         #    cv2.rectangle(img, (int(bb[0]), int(bb[1])),
                         #                  (int(bb[0]) + int(bb[2]), int(bb[1]) + int(bb[3])),
@@ -955,15 +950,15 @@ if __name__ == "__main__":
                                         lineType)
 
 
-                        R = np.asarray(gtRots[i], dtype=np.float32)
-                        rot = tf3d.quaternions.mat2quat(R.reshape(3, 3))
-                        tra = np.asarray(gtPoses[i], dtype=np.float32) * 0.001
+                        #R = np.asarray(gtRots[i], dtype=np.float32)
+                        #rot = tf3d.quaternions.mat2quat(R.reshape(3, 3))
+                        #tra = np.asarray(gtPoses[i], dtype=np.float32) * 0.001
                         #xpix = ((tra[0] * fxkin) / tra[2]) + cxkin
                         #ypix = ((tra[1] * fykin) / tra[2]) + cykin
                         #zpix = tra[2] * 0.001 * fxkin
-                        pose = np.concatenate([tra.transpose(), rot.transpose()])
+                        #pose = np.concatenate([tra.transpose(), rot.transpose()])
                         #print('gt rotation: ', rot)
-                        draw_axis(img_gt, pose)
+                        #draw_axis(img_gt, pose)
                         '''
                         rot = np.asarray(detPoses[i], dtype=np.float32)
                         pose = np.concatenate([tra.transpose(), rot.transpose()])
@@ -977,40 +972,40 @@ if __name__ == "__main__":
                        # cv2.circle(img, (int(detPoses[i][0]), int(detPoses[i][1])), 5, (255,0,0), 3)
                         #cv2.circle(img, (int(xpix), int(ypix)), 5, (0, 255, 0), 3)
                         '''
-                        rot = np.asarray(gtRots[0], dtype=np.float32).reshape((3,3))
-                        tra = np.asarray(gtPoses[0], dtype=np.float32) * 0.001
+                        #rot = np.asarray(gtRots[0], dtype=np.float32).reshape((3,3))
+                        #tra = np.asarray(gtPoses[0], dtype=np.float32) * 0.001
 
-                        tDbox = rot.dot(threeD_boxes[gtCats[0]-1, :, :].T).T
-                        tDbox = tDbox + np.repeat(tra[:, np.newaxis], 8, axis=1).T
+                        #tDbox = rot.dot(threeD_boxes[gtCats[0]-1, :, :].T).T
+                        #tDbox = tDbox + np.repeat(tra[:, np.newaxis], 8, axis=1).T
 
-                        box3D = toPix_array(tDbox)
-                        box3D = np.reshape(box3D, (16))
-                        pose = box3D
+                        #box3D = toPix_array(tDbox)
+                        #box3D = np.reshape(box3D, (16))
+                        #pose = box3D
 
 
 
-                        img_gt = cv2.line(img_gt, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 3)
-                        img_gt = cv2.line(img_gt, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 3)
-                        img_gt = cv2.line(img_gt, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR1, colG1, colB1), 3)
-                        img_gt = cv2.line(img_gt, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR1, colG1, colB1), 3)
-                        img_gt = cv2.line(img_gt, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR2, colG2, colB2), 3)
-                        img_gt = cv2.line(img_gt, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR2, colG2, colB2), 3)
-                        img_gt = cv2.line(img_gt, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR5, colG5, colB5), 3)
-                        img_gt = cv2.line(img_gt, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (colR5, colG5, colB5), 3)
-                        img_gt = cv2.line(img_gt, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()), (colR3, colG3, colB3),
-                                       3)
-                        img_gt = cv2.line(img_gt, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()), (colR3, colG3, colB3),
-                                       3)
-                        img_gt = cv2.line(img_gt, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()), (colR4, colG4, colB4),
-                                       3)
-                        img_gt = cv2.line(img_gt, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()), (colR4, colG4, colB4),
-                                       3)
+                        #img_gt = cv2.line(img_gt, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 3)
+                        #img_gt = cv2.line(img_gt, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 3)
+                        #img_gt = cv2.line(img_gt, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR1, colG1, colB1), 3)
+                        #img_gt = cv2.line(img_gt, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR1, colG1, colB1), 3)
+                        #img_gt = cv2.line(img_gt, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR2, colG2, colB2), 3)
+                        #img_gt = cv2.line(img_gt, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR2, colG2, colB2), 3)
+                        #img_gt = cv2.line(img_gt, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR5, colG5, colB5), 3)
+                        #img_gt = cv2.line(img_gt, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (colR5, colG5, colB5), 3)
+                        #img_gt = cv2.line(img_gt, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()), (colR3, colG3, colB3),
+                        #               3)
+                        #img_gt = cv2.line(img_gt, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()), (colR3, colG3, colB3),
+                        #               3)
+                        #img_gt = cv2.line(img_gt, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()), (colR4, colG4, colB4),
+                        #               3)
+                        #img_gt = cv2.line(img_gt, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()), (colR4, colG4, colB4),
+                        #               3)
 
-                        draw_axis(img, posevis[0])
+                        #draw_axis(img, posevis[0])
 
-                    name = '/home/sthalham/visTests/detected.jpg'
-                    img_con = np.concatenate((img, img_gt), axis=1)
-                    cv2.imwrite(name, img_con)
+                    #name = '/home/sthalham/visTests/detected.jpg'
+                    #img_con = np.concatenate((img, img_gt), axis=1)
+                    #cv2.imwrite(name, img_con)
                     name_est = '/home/sthalham/visTests/detected_est.jpg'
                     cv2.imwrite(name_est, img)
 

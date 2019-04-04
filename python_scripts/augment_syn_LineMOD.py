@@ -13,6 +13,7 @@ import transforms3d as tf3d
 import time
 import itertools
 import random
+import tracemalloc
 from noise import pnoise2, snoise2
 import pyfastnoisesimd as fns
 import geometry
@@ -36,6 +37,8 @@ fykin = 542.31  # blender calculated
 cxkin = 320
 cykin = 240
 depthCut = 1800
+
+
 
 np.set_printoptions(threshold=np.nan)
 
@@ -306,8 +309,8 @@ def augmentDepth(depth, obj_mask, mask_ori, shadowClK, shadowMK, blurK, blurS, d
         seed = np.random.randint(2 ** 31)
         N_threads = 4
         perlin = fns.Noise(seed=seed, numWorkers=N_threads)
-        drawFreq = random.uniform(0.05, 0.2) # 0.05 - 0.2
-        #drawFreq = 0.5
+        drawFreq = random.uniform(0.05, 0.2)  # 0.05 - 0.2
+        # drawFreq = 0.5
         perlin.frequency = drawFreq
         perlin.noiseType = fns.NoiseType.SimplexFractal
         perlin.fractal.fractalType = fns.FractalType.FBM
@@ -347,9 +350,9 @@ def augmentDepth(depth, obj_mask, mask_ori, shadowClK, shadowMK, blurK, blurS, d
 
 
         X, Y = np.meshgrid(np.arange(resX), np.arange(resY))
-        coords0 = fns.emptyCoords(resX * resY)
-        coords1 = fns.emptyCoords(resX * resY)
-        coords2 = fns.emptyCoords(resX * resY)
+        coords0 = fns.empty_coords(resX * resY)
+        coords1 = fns.empty_coords(resX * resY)
+        coords2 = fns.empty_coords(resX * resY)
 
         coords0[0, :] = noiseX.ravel()
         coords0[1, :] = Y.ravel()
@@ -491,11 +494,11 @@ if __name__ == "__main__":
     root = '/home/sthalham/data/renderings/linemod_BG'
     if dataset is 'tless':
         root = '/home/sthalham/data/renderings/tless_BG/patches'
-    target = '/home/sthalham/data/prepro/linemod_box3D_rgd_full/'
+    target = '/home/sthalham/data/prepro/test/'
     # [depth, normals, sensor, simplex, full]
     method = 'full'
     visu = False
-    n_samples = 10000 # real=1214
+    n_samples = 30000 # real=1214
     if dataset is 'tless':
         n_samples = 2524
 
@@ -560,244 +563,211 @@ if __name__ == "__main__":
             depth_refine = np.multiply(depth_refine, 1000.0)  # to millimeters
             rows, cols = depth_refine.shape
 
-            newredname = redname[1:]
+            for k in range(0, 2):
 
-            fileName = target + "images/train/" + newredname + '.jpg'
-            myFile = Path(fileName)
+                newredname = redname[1:] + str(k)
 
-            if myFile.exists():
-                print('File exists, skip encoding and safing.')
+                #newredname = redname[1:]
 
-            else:
-                if method == 'normals':
-                    normals, depth_refine_aug, depth_imp = get_normal(depth_refine, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+                fileName = target + "images/train/" + newredname + '.jpg'
+                myFile = Path(fileName)
+
+                if myFile.exists():
+                    print('File exists, skip encoding and safing.')
+
+                else:
+                    if method == 'normals':
+                        normals, depth_refine_aug, depth_imp = get_normal(depth_refine, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
                                                            for_vis=False)
 
-                elif method == 'simplex':
-                    drawKern = [3, 5, 7]
-                    freqKern = np.bincount(drawKern)
-                    kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                    kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                    kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                    sBlur = random.uniform(0.25, 3.5)
-                    sDep = random.uniform(0.002, 0.004)
-                    kShadow.astype(int)
-                    kMed.astype(int)
-                    kBlur.astype(int)
-                    kShadow = kShadow[0]
-                    kMed = kMed[0]
-                    kBlur = kBlur[0]
-                    augmentation_var = 2  # [0 = full, 1 = sensor, 2 = simplex]
-                    depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep, augmentation_var)
+                    elif method == 'simplex':
+                        drawKern = [3, 5, 7]
+                        freqKern = np.bincount(drawKern)
+                        kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        sBlur = random.uniform(0.25, 3.5)
+                        sDep = random.uniform(0.002, 0.004)
+                        kShadow.astype(int)
+                        kMed.astype(int)
+                        kBlur.astype(int)
+                        kShadow = kShadow[0]
+                        kMed = kMed[0]
+                        kBlur = kBlur[0]
+                        augmentation_var = 2  # [0 = full, 1 = sensor, 2 = simplex]
+                        depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep, augmentation_var)
 
-                    aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+                        aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
                                                          for_vis=False)
 
-                    #depth_imp[depth_imp > depthCut] = 0
-                    #scaCro = 255.0 / np.nanmax(depth_imp)
-                    #cross = np.multiply(depth_imp, scaCro)
-                    depthAug[depthAug > depthCut] = 0
-                    scaCro = 255.0 / np.nanmax(depthAug)
-                    cross = np.multiply(depthAug, scaCro)
-                    dep_sca = cross.astype(np.uint8)
-                    #cv2.imwrite(fileName, dep_sca)
-                    aug_xyz[:, :, 2] = dep_sca
-                    cv2.imwrite(fileName, aug_xyz)
+                        #depth_imp[depth_imp > depthCut] = 0
+                        #scaCro = 255.0 / np.nanmax(depth_imp)
+                        #cross = np.multiply(depth_imp, scaCro)
+                        depthAug[depthAug > depthCut] = 0
+                        scaCro = 255.0 / np.nanmax(depthAug)
+                        cross = np.multiply(depthAug, scaCro)
+                        dep_sca = cross.astype(np.uint8)
+                        #cv2.imwrite(fileName, dep_sca)
+                        aug_xyz[:, :, 2] = dep_sca
+                        cv2.imwrite(fileName, aug_xyz)
 
-                elif method == 'full':
-                    drawKern = [3, 5, 7]
-                    freqKern = np.bincount(drawKern)
-                    kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                    kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                    kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                    sBlur = random.uniform(0.25, 3.5)
-                    sDep = random.uniform(0.002, 0.004)
-                    kShadow.astype(int)
-                    kMed.astype(int)
-                    kBlur.astype(int)
-                    kShadow = kShadow[0]
-                    kMed = kMed[0]
-                    kBlur = kBlur[0]
-                    augmentation_var = 0  # [0 = full, 1 = sensor, 2 = simplex]
-                    #depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep, augmentation_var)
-                    if dataset is 'tless':
-                        depthAug = augmentTless(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep,
+                    elif method == 'full':
+                        drawKern = [3, 5, 7]
+                        freqKern = np.bincount(drawKern)
+                        kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        sBlur = random.uniform(0.25, 3.5)
+                        sDep = random.uniform(0.002, 0.004)
+                        kShadow.astype(int)
+                        kMed.astype(int)
+                        kBlur.astype(int)
+                        kShadow = kShadow[0]
+                        kMed = kMed[0]
+                        kBlur = kBlur[0]
+                        augmentation_var = 0  # [0 = full, 1 = sensor, 2 = simplex]
+                        #depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep, augmentation_var)
+                        if dataset is 'tless':
+                            depthAug = augmentTless(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep,
                                                     augmentation_var)
-                    else:
-                        depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep,
+                        else:
+
+                            depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep,
                                             augmentation_var)
 
-                    depth2store = copy.deepcopy(depthAug)
-                    depth2store[depthAug > depthCut] = 0
-                    scaCro = 255.0 / np.nanmax(depth2store)
-                    cross = np.multiply(depth2store, scaCro)
-                    dep_sca = cross.astype(np.uint8)
-                    aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+                        depth2store = copy.deepcopy(depthAug)
+                        depth2store[depthAug > depthCut] = 0
+                        scaCro = 255.0 / np.nanmax(depth2store)
+                        cross = np.multiply(depth2store, scaCro)
+                        dep_sca = cross.astype(np.uint8)
+                        aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
                                                          for_vis=False)
-                    aug_xyz[:,:,2] = dep_sca
-                    #cv2.imwrite(fileName, dep_sca)
-                    cv2.imwrite(fileName, aug_xyz)
+                        #aug_xyz[:,:,2] = dep_sca
+                        cv2.imwrite(fileName, dep_sca)
+                        cv2.imwrite(fileName, aug_xyz)
 
-            imgID = int(newredname)
-            imgName = newredname + '.jpg'
+                imgID = int(newredname)
+                imgName = newredname + '.jpg'
 
-            # bb scaling because of image scaling
-            bbsca = 1.0
-            if dataset is 'tless':
-                bbsca = 720.0 / 640.0
-            bbvis = (bboxes * bbsca).astype(int)
-            bbvis = bbvis.astype(int)
-            bb3vis = []
-            cats = []
-            posvis = []
-            postra = []
-            for i, bbox in enumerate(bboxes[:-1]):
-                objID = np.asscalar(bbox[0]) + 1
-                cats.append(objID)
-                bbox = (bbox * bbsca).astype(int)
+                # bb scaling because of image scaling
+                bbsca = 1.0
+                if dataset is 'tless':
+                    bbsca = 720.0 / 640.0
+                bbvis = (bboxes * bbsca).astype(int)
+                bbvis = bbvis.astype(int)
+                bb3vis = []
+                cats = []
+                posvis = []
+                postra = []
+                for i, bbox in enumerate(bboxes[:-1]):
+                    objID = np.asscalar(bbox[0]) + 1
+                    cats.append(objID)
+                    bbox = (bbox * bbsca).astype(int)
 
-                rot = tf3d.quaternions.quat2mat(poses[i, 3:])
-                rot = np.asarray(rot, dtype=np.float32)
+                    rot = tf3d.quaternions.quat2mat(poses[i, 3:])
+                    rot = np.asarray(rot, dtype=np.float32)
 
-                tDbox = rot.dot(threeD_boxes[bbox[0], :, :].T).T
-                tDbox = tDbox + np.repeat(poses[i, np.newaxis, 0:3], 8, axis=0)
+                    tDbox = rot.dot(threeD_boxes[bbox[0], :, :].T).T
+                    tDbox = tDbox + np.repeat(poses[i, np.newaxis, 0:3], 8, axis=0)
 
-                box3D = toPix_array(tDbox)
-                box3D = np.reshape(box3D, (16))
-                box3D = box3D.tolist()
-                bb3vis.append(box3D)
-                #print('pose: ', poses[i, 0:3], 'points: ', tDbox)
+                    box3D = toPix_array(tDbox)
+                    box3D = np.reshape(box3D, (16))
+                    box3D = box3D.tolist()
+                    bb3vis.append(box3D)
+                    #print('pose: ', poses[i, 0:3], 'points: ', tDbox)
 
-                bbox = bbox.astype(int)
-                x1 = np.asscalar(bbox[2])
-                y1 = np.asscalar(bbox[1])
-                x2 = np.asscalar(bbox[4])
-                y2 = np.asscalar(bbox[3])
-                nx1 = bbox[2]
-                ny1 = bbox[1]
-                nx2 = bbox[4]
-                ny2 = bbox[3]
-                w = (x2 - x1)
-                h = (y2 - y1)
-                bb = [x1, y1, w, h]
-                area = w * h
-                npseg = np.array([nx1, ny1, nx2, ny1, nx2, ny2, nx1, ny2])
-                seg = npseg.tolist()
+                    bbox = bbox.astype(int)
+                    x1 = np.asscalar(bbox[2])
+                    y1 = np.asscalar(bbox[1])
+                    x2 = np.asscalar(bbox[4])
+                    y2 = np.asscalar(bbox[3])
+                    nx1 = bbox[2]
+                    ny1 = bbox[1]
+                    nx2 = bbox[4]
+                    ny2 = bbox[3]
+                    w = (x2 - x1)
+                    h = (y2 - y1)
+                    bb = [x1, y1, w, h]
+                    area = w * h
+                    npseg = np.array([nx1, ny1, nx2, ny1, nx2, ny2, nx1, ny2])
+                    seg = npseg.tolist()
 
-                # mask encoding
-                #labelMask = obj_mask == mask_ids[i]
-                #labelMask = np.expand_dims(labelMask, axis=2)
-                #labelMask = labelMask.astype('uint8')
-                #labelMask = np.asfortranarray(labelMask, dtype=np.uint8)
-                #rle = cocomask.encode(labelMask)
-                #assert len(rle) == 1
-                #rle = rle[0]
-                #rle['counts'] = rle['counts'].decode('ascii')
-                #area = cocomask.area(rle)
-
-                #rotE = tf3d.euler.quat2euler(poses[i, 3:])
-                #rotE = np.asarray(rotE, dtype=np.float32)
-                #lie = geometry.rotations.hat_map(rotE)
-                #rotE = rotE/np.linalg.norm(rotE)
-                #lie_norm = geometry.rotations.hat_map(rotE)
-
-                #pose = [np.asscalar(poses[i, 0]), np.asscalar(poses[i, 1]), np.asscalar(poses[i, 2]),
-                #        np.asscalar(lie[0,1]), np.asscalar(lie[0,2]), np.asscalar(lie[1,2])]
-
-                #pose = [np.asscalar(poses[i,0]), np.asscalar(poses[i,1]), np.asscalar(poses[i,2]),
-                #        np.asscalar(poses[i,3]), np.asscalar(poses[i,4]), np.asscalar(poses[i,5]),
-                #        np.asscalar(poses[i,6])]
-                #if i != len(bboxes):
-                #    pose[0:2] = toPix(pose[0:3])
-                #rot = tf3d.quaternions.quat2mat(poses[i, 3:])
-                #rot = np.asarray(rot, dtype=np.float32)
-                # lie = geometry.rotations.hat_map(rot)
-                #lie = geometry.poses.pose_from_rotation_translation(rot, poses[i, :3])
-
-                #pose = [np.asscalar(lie[0, 3]), np.asscalar(lie[1, 3]), np.asscalar(lie[2, 3]),
-                #        np.asscalar(lie[2, 1]), np.asscalar(lie[0, 2]), np.asscalar(lie[1, 0])]
-
-                #rot = tf3d.euler.quat2euler(poses[i, 3:])
-                #rot = np.asarray(rot, dtype=np.float32)
-                #pose = [np.asscalar(poses[i, 0]), np.asscalar(poses[i, 1]), np.asscalar(poses[i, 2]),
-                #                np.asscalar(rot[0]), np.asscalar(rot[1]), np.asscalar(rot[2])]
-
-                pose = [np.asscalar(poses[i, 0]), np.asscalar(poses[i, 1]), np.asscalar(poses[i, 2]),
+                    pose = [np.asscalar(poses[i, 0]), np.asscalar(poses[i, 1]), np.asscalar(poses[i, 2]),
                                 np.asscalar(poses[i,3]), np.asscalar(poses[i,4]), np.asscalar(poses[i,5]),
                                 np.asscalar(poses[i,6])]
-                if i != len(bboxes):
-                    pose[0:2] = toPix(pose[0:3])
+                    if i != len(bboxes):
+                        pose[0:2] = toPix(pose[0:3])
 
-                posvis.append(pose)
-                tra = np.asarray(poses[i, :3], dtype=np.float32)
-                postra.append(tra)
+                    posvis.append(pose)
+                    tra = np.asarray(poses[i, :3], dtype=np.float32)
+                    postra.append(tra)
 
-                #if pose[3] < 0.0:
-                #    raise ValueError('w < 0.0')
+                    #if pose[3] < 0.0:
+                    #    raise ValueError('w < 0.0')
 
-                annoID = annoID + 1
-                tempTA = {
-                    "id": annoID,
-                    "image_id": imgID,
-                    "category_id": objID,
-                    "bbox": bb,
-                    "pose": pose,
-                    "segmentation": box3D,
-                    "area": area,
-                    "iscrowd": 0
+                    annoID = annoID + 1
+                    tempTA = {
+                        "id": annoID,
+                        "image_id": imgID,
+                        "category_id": objID,
+                        "bbox": bb,
+                        "pose": pose,
+                        "segmentation": box3D,
+                        "area": area,
+                        "iscrowd": 0
+                    }
+                    #print('norm q: ', np.linalg.norm(pose[3:]))
+
+                    dict["annotations"].append(tempTA)
+
+                tempTL = {
+                    "url": "cmp.felk.cvut.cz/t-less/",
+                    "id": imgID,
+                    "name": imgName
                 }
-                #print('norm q: ', np.linalg.norm(pose[3:]))
+                dict["licenses"].append(tempTL)
 
-                dict["annotations"].append(tempTA)
+                tempTV = {
+                    "license": 2,
+                    "url": "cmp.felk.cvut.cz/t-less/",
+                    "file_name": imgName,
+                    "height": resY,
+                    "width": resX,
+                    "date_captured": dateT,
+                    "id": imgID
+                }
+                dict["images"].append(tempTV)
 
-            tempTL = {
-                "url": "cmp.felk.cvut.cz/t-less/",
-                "id": imgID,
-                "name": imgName
-            }
-            dict["licenses"].append(tempTL)
+                gloCo += 1
 
-            tempTV = {
-                "license": 2,
-                "url": "cmp.felk.cvut.cz/t-less/",
-                "file_name": imgName,
-                "height": resY,
-                "width": resX,
-                "date_captured": dateT,
-                "id": imgID
-            }
-            dict["images"].append(tempTV)
+                elapsed_time = time.time() - start_time
+                times.append(elapsed_time)
+                meantime = sum(times)/len(times)
+                eta = ((all - gloCo) * meantime) / 60
+                if gloCo % 100 == 0:
+                    print('eta: ', eta, ' min')
+                    times = []
 
-            gloCo += 1
+                if visu is True:
+                    #img = cv2.imread(fileName, cv2.IMREAD_UNCHANGED)
+                    for i, bb in enumerate(bbvis[:-1]):
 
-            elapsed_time = time.time() - start_time
-            times.append(elapsed_time)
-            meantime = sum(times)/len(times)
-            eta = ((all - gloCo) * meantime) / 60
-            if gloCo % 100 == 0:
-                print('eta: ', eta, ' min')
-                times = []
+                        #cv2.rectangle(aug_xyz, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
+                        #              (255, 255, 255), 2)
+                        #cv2.rectangle(img, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
+                        #              (0, 0, 0), 1)
+                        #
+                        font = cv2.FONT_HERSHEY_SIMPLEX
+                        bottomLeftCornerOfText = (int(bb[2]), int(bb[1]))
+                        fontScale = 1
+                        fontColor = (0, 0, 0)
+                        fontthickness = 1
+                        lineType = 2
+                        gtText = str(cats[i])
 
-            if visu is True:
-                #img = cv2.imread(fileName, cv2.IMREAD_UNCHANGED)
-                for i, bb in enumerate(bbvis[:-1]):
-
-                    #cv2.rectangle(aug_xyz, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
-                    #              (255, 255, 255), 2)
-                    #cv2.rectangle(img, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
-                    #              (0, 0, 0), 1)
-                    #
-                    font = cv2.FONT_HERSHEY_SIMPLEX
-                    bottomLeftCornerOfText = (int(bb[2]), int(bb[1]))
-                    fontScale = 1
-                    fontColor = (0, 0, 0)
-                    fontthickness = 1
-                    lineType = 2
-                    gtText = str(cats[i])
-
-                    fontColor2 = (255, 255, 255)
-                    fontthickness2 = 3
-                    cv2.putText(aug_xyz, gtText,
+                        fontColor2 = (255, 255, 255)
+                        fontthickness2 = 3
+                        cv2.putText(aug_xyz, gtText,
                                 bottomLeftCornerOfText,
                                 font,
                                 fontScale,
@@ -805,7 +775,7 @@ if __name__ == "__main__":
                                 fontthickness2,
                                 lineType)
 
-                    cv2.putText(aug_xyz, gtText,
+                        cv2.putText(aug_xyz, gtText,
                                 bottomLeftCornerOfText,
                                 font,
                                 fontScale,
@@ -813,44 +783,44 @@ if __name__ == "__main__":
                                 fontthickness,
                                 lineType)
 
-                    #print(posvis[i])
-                    if i is not poses.shape[0]-1:
-                        pose2D = posvis[i]
-                        print(str(cats[i]))
-                        pose = np.asarray(bb3vis[i], dtype=np.float32)
-                        colR = random.randint(0, 255)
-                        colG = random.randint(0, 255)
-                        colB = random.randint(0, 255)
-                        #rot_lie = [[0.0, pose[3], pose[4]], [-pose[3], 0.0, pose[5]], [-pose[4], -pose[5], 0.0]]
-                        #ssm =np.asarray(rot_lie, dtype=np.float32)
-                        #map = geometry.rotations.map_hat(ssm)
-                        #quat = tf3d.euler.euler2quat(pose2D[3], pose2D[4], pose2D[5])
-                        #quat = quat / np.linalg.norm(quat)
-                        pose2D = np.concatenate([postra[i], pose2D[3:]])
-                        #print('x: ', (pose[0]-bb[2])/(bb[4]-bb[2]))
-                        #print('y: ', (pose[1] - bb[1]) / (bb[3] - bb[1]))
-                        #print(pose[0:2], bb[1:])
+                        #print(posvis[i])
+                        if i is not poses.shape[0]-1:
+                            pose2D = posvis[i]
+                            print(str(cats[i]))
+                            pose = np.asarray(bb3vis[i], dtype=np.float32)
+                            colR = random.randint(0, 255)
+                            colG = random.randint(0, 255)
+                            colB = random.randint(0, 255)
+                            #rot_lie = [[0.0, pose[3], pose[4]], [-pose[3], 0.0, pose[5]], [-pose[4], -pose[5], 0.0]]
+                            #ssm =np.asarray(rot_lie, dtype=np.float32)
+                            #map = geometry.rotations.map_hat(ssm)
+                            #quat = tf3d.euler.euler2quat(pose2D[3], pose2D[4], pose2D[5])
+                            #quat = quat / np.linalg.norm(quat)
+                            pose2D = np.concatenate([postra[i], pose2D[3:]])
+                            #print('x: ', (pose[0]-bb[2])/(bb[4]-bb[2]))
+                            #print('y: ', (pose[1] - bb[1]) / (bb[3] - bb[1]))
+                            #print(pose[0:2], bb[1:])
 
-                        #cv2.circle(img, (int(pose[0]), int(pose[1])), 5, (0, 255, 0), 3)
-                        draw_axis(aug_xyz, pose2D)
+                            #cv2.circle(img, (int(pose[0]), int(pose[1])), 5, (0, 255, 0), 3)
+                            draw_axis(aug_xyz, pose2D)
 
-                        img = aug_xyz
-                        img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
+                            img = aug_xyz
+                            img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
 
-                cv2.imwrite('/home/sthalham/visTests/trainBB.jpg', img)
+                    cv2.imwrite('/home/sthalham/visTests/trainBB.jpg', img)
 
-                print('STOP')
+                    print('STOP')
 
     if dataset is 'linemod':
         catsInt = range(1,16)
