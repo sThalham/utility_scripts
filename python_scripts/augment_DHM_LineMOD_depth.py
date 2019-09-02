@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import json
 from scipy import ndimage, signal
+import scipy
 import math
 import datetime
 import copy
@@ -55,15 +56,7 @@ threeD_boxes[1, :, :] = np.array([[0.108, 0.061, 0.1095],  # benchvise [216, 122
                                      [-0.108, 0.061, -0.1095],
                                      [-0.108, -0.061, -0.1095],
                                      [-0.108, -0.061, 0.1095]])
-threeD_boxes[2, :, :] = np.array([[0.083, 0.0825, 0.037],  # bowl [166, 165, 74]
-                                     [0.083, 0.0825, -0.037],
-                                     [0.083, -0.0825, -0.037],
-                                     [0.083, -0.0825, 0.037],
-                                     [-0.083, 0.0825, 0.037],
-                                     [-0.083, 0.0825, -0.037],
-                                     [-0.083, -0.0825, -0.037],
-                                     [-0.083, -0.0825, 0.037]])
-threeD_boxes[3, :, :] = np.array([[0.0685, 0.0715, 0.05],  # camera [137, 143, 100]
+threeD_boxes[2, :, :] = np.array([[0.0685, 0.0715, 0.05],  # camera [137, 143, 100]
                                      [0.0685, 0.0715, -0.05],
                                      [0.0685, -0.0715, -0.05],
                                      [0.0685, -0.0715, 0.05],
@@ -71,7 +64,7 @@ threeD_boxes[3, :, :] = np.array([[0.0685, 0.0715, 0.05],  # camera [137, 143, 1
                                      [-0.0685, 0.0715, -0.05],
                                      [-0.0685, -0.0715, -0.05],
                                      [-0.0685, -0.0715, 0.05]])
-threeD_boxes[4, :, :] = np.array([[0.0505, 0.091, 0.097],  # can [101, 182, 194]
+threeD_boxes[3, :, :] = np.array([[0.0505, 0.091, 0.097],  # can [101, 182, 194]
                                      [0.0505, 0.091, -0.097],
                                      [0.0505, -0.091, -0.097],
                                      [0.0505, -0.091, 0.097],
@@ -79,7 +72,7 @@ threeD_boxes[4, :, :] = np.array([[0.0505, 0.091, 0.097],  # can [101, 182, 194]
                                      [-0.0505, 0.091, -0.097],
                                      [-0.0505, -0.091, -0.097],
                                      [-0.0505, -0.091, 0.097]])
-threeD_boxes[5, :, :] = np.array([[0.0335, 0.064, 0.0585],  # cat [67, 128, 117]
+threeD_boxes[4, :, :] = np.array([[0.0335, 0.064, 0.0585],  # cat [67, 128, 117]
                                      [0.0335, 0.064, -0.0585],
                                      [0.0335, -0.064, -0.0585],
                                      [0.0335, -0.064, 0.0585],
@@ -87,15 +80,7 @@ threeD_boxes[5, :, :] = np.array([[0.0335, 0.064, 0.0585],  # cat [67, 128, 117]
                                      [-0.0335, 0.064, -0.0585],
                                      [-0.0335, -0.064, -0.0585],
                                      [-0.0335, -0.064, 0.0585]])
-threeD_boxes[6, :, :] = np.array([[0.059, 0.046, 0.0475],  # mug [118, 92, 95]
-                                     [0.059, 0.046, -0.0475],
-                                     [0.059, -0.046, -0.0475],
-                                     [0.059, -0.046, 0.0475],
-                                    [-0.059, 0.046, 0.0475],
-                                    [-0.059, 0.046, -0.0475],
-                                     [-0.059, -0.046, -0.0475],
-                                     [-0.059, -0.046, 0.0475]])
-threeD_boxes[7, :, :] = np.array([[0.115, 0.038, 0.104],  # drill [230, 76, 208]
+threeD_boxes[5, :, :] = np.array([[0.115, 0.038, 0.104],  # drill [230, 76, 208]
                                      [0.115, 0.038, -0.104],
                                      [0.115, -0.038, -0.104],
                                      [0.115, -0.038, 0.104],
@@ -103,7 +88,7 @@ threeD_boxes[7, :, :] = np.array([[0.115, 0.038, 0.104],  # drill [230, 76, 208]
                                      [-0.115, 0.038, -0.104],
                                      [-0.115, -0.038, -0.104],
                                      [-0.115, -0.038, 0.104]])
-threeD_boxes[8, :, :] = np.array([[0.052, 0.0385, 0.043],  # duck [104, 77, 86]
+threeD_boxes[6, :, :] = np.array([[0.052, 0.0385, 0.043],  # duck [104, 77, 86]
                                      [0.052, 0.0385, -0.043],
                                      [0.052, -0.0385, -0.043],
                                      [0.052, -0.0385, 0.043],
@@ -111,7 +96,7 @@ threeD_boxes[8, :, :] = np.array([[0.052, 0.0385, 0.043],  # duck [104, 77, 86]
                                      [-0.052, 0.0385, -0.043],
                                      [-0.052, -0.0385, -0.043],
                                      [-0.052, -0.0385, 0.043]])
-threeD_boxes[9, :, :] = np.array([[0.075, 0.0535, 0.0345],  # eggbox [150, 107, 69]
+threeD_boxes[7, :, :] = np.array([[0.075, 0.0535, 0.0345],  # eggbox [150, 107, 69]
                                      [0.075, 0.0535, -0.0345],
                                      [0.075, -0.0535, -0.0345],
                                      [0.075, -0.0535, 0.0345],
@@ -119,7 +104,7 @@ threeD_boxes[9, :, :] = np.array([[0.075, 0.0535, 0.0345],  # eggbox [150, 107, 
                                      [-0.075, 0.0535, -0.0345],
                                      [-0.075, -0.0535, -0.0345],
                                      [-0.075, -0.0535, 0.0345]])
-threeD_boxes[10, :, :] = np.array([[0.0185, 0.039, 0.0865],  # glue [37, 78, 173]
+threeD_boxes[8, :, :] = np.array([[0.0185, 0.039, 0.0865],  # glue [37, 78, 173]
                                      [0.0185, 0.039, -0.0865],
                                      [0.0185, -0.039, -0.0865],
                                      [0.0185, -0.039, 0.0865],
@@ -127,7 +112,7 @@ threeD_boxes[10, :, :] = np.array([[0.0185, 0.039, 0.0865],  # glue [37, 78, 173
                                      [-0.0185, 0.039, -0.0865],
                                      [-0.0185, -0.039, -0.0865],
                                      [-0.0185, -0.039, 0.0865]])
-threeD_boxes[11, :, :] = np.array([[0.0505, 0.054, 0.04505],  # holepuncher [101, 108, 91]
+threeD_boxes[9, :, :] = np.array([[0.0505, 0.054, 0.04505],  # holepuncher [101, 108, 91]
                                      [0.0505, 0.054, -0.04505],
                                      [0.0505, -0.054, -0.04505],
                                      [0.0505, -0.054, 0.04505],
@@ -135,7 +120,7 @@ threeD_boxes[11, :, :] = np.array([[0.0505, 0.054, 0.04505],  # holepuncher [101
                                      [-0.0505, 0.054, -0.04505],
                                      [-0.0505, -0.054, -0.04505],
                                      [-0.0505, -0.054, 0.04505]])
-threeD_boxes[12, :, :] = np.array([[0.115, 0.038, 0.104],  # drill [230, 76, 208]
+threeD_boxes[10, :, :] = np.array([[0.115, 0.038, 0.104],  # iron [230, 76, 208]
                                      [0.115, 0.038, -0.104],
                                      [0.115, -0.038, -0.104],
                                      [0.115, -0.038, 0.104],
@@ -143,15 +128,15 @@ threeD_boxes[12, :, :] = np.array([[0.115, 0.038, 0.104],  # drill [230, 76, 208
                                      [-0.115, 0.038, -0.104],
                                      [-0.115, -0.038, -0.104],
                                      [-0.115, -0.038, 0.104]])
-threeD_boxes[13, :, :] = np.array([[0.129, 0.059, 0.0705],  # iron [258, 118, 141]
-                                     [0.129, 0.059, -0.0705],
-                                     [0.129, -0.059, -0.0705],
-                                     [0.129, -0.059, 0.0705],
-                                     [-0.129, 0.059, 0.0705],
-                                     [-0.129, 0.059, -0.0705],
-                                     [-0.129, -0.059, -0.0705],
-                                     [-0.129, -0.059, 0.0705]])
-threeD_boxes[14, :, :] = np.array([[0.047, 0.0735, 0.0925],  # phone [94, 147, 185]
+threeD_boxes[11, :, :] = np.array([[0.1, 0.059, 0.0705],  # lamp [258, 118, 141]
+                                     [0.1, 0.059, -0.0705],
+                                     [0.1, -0.059, -0.0705],
+                                     [0.1, -0.059, 0.0705],
+                                     [-0.1, 0.059, 0.0705],
+                                     [-0.1, 0.059, -0.0705],
+                                     [-0.1, -0.059, -0.0705],
+                                     [-0.1, -0.059, 0.0705]])
+threeD_boxes[12, :, :] = np.array([[0.047, 0.0735, 0.0925],  # phone [94, 147, 185]
                                      [0.047, 0.0735, -0.0925],
                                      [0.047, -0.0735, -0.0925],
                                      [0.047, -0.0735, 0.0925],
@@ -211,9 +196,6 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
 
     with open(fn_gt, 'r') as stream:
         query = yaml.load(stream)
-        if query is None:
-            print('Whatever is wrong there.... ¯\_(ツ)_/¯')
-            return None, None, None, None, None, None
         bboxes = np.zeros((len(query), 5), np.int)
         poses = np.zeros((len(query), 7), np.float32)
         mask_ids = np.zeros((len(query)), np.int)
@@ -263,9 +245,9 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
     partmask = cv2.imread(fn_part, 0)
 
     #print('partmask: ', np.nanmean(partmask))
-    #if np.nanmean(partmask) < 150.0:
-    #    print('invalid visibility mask!')
-    #    return None, None, None, None, None, None
+    if np.nanmean(partmask) < 150.0:
+        print('invalid visibility mask!')
+        return None, None, None, None, None, None
 
     return depth, partmask, bboxes, poses, mask_ids, visibilities
 
@@ -287,10 +269,8 @@ def augmentDepth(depth, obj_mask, mask_ori, shadowClK, shadowMK, blurK, blurS, d
     # erode and blur mask to get more realistic appearance
     partmask = mask_ori
     partmask = partmask.astype(np.float32)
-    #mask = partmask > (np.median(partmask) * 0.4)
-    partmask = np.where(partmask > 0.0, 255.0, 0.0)
-
-    cv2.imwrite('/home/sthalham/partmask.png', partmask)
+    mask = partmask > (np.median(partmask) * 0.4)
+    partmask = np.where(mask, 255.0, 0.0)
 
     # apply shadow
     kernel = np.ones((shadowClK, shadowClK))
@@ -500,10 +480,8 @@ def get_normal(depth_refine, fx=-1, fy=-1, cx=-1, cy=-1, for_vis=True):
 if __name__ == "__main__":
 
     #root = '/home/sthalham/data/renderings/linemod_BG/patches31052018/patches'  # path to train samples
-    root = '/home/sthalham/data/renderings/linemod_rgbd/patches'
-    target = '/home/sthalham/data/prepro/linemod_depth_rgbd_double/'
-    # [depth, normals, sensor, simplex, full]
-    method = 'full'
+    root = '/home/sthalham/data/renderings/linemod_classic/patches'
+    target = '/home/sthalham/workspace/DeepHM/data/linemod_depth'
     visu = False
     n_samples = 30000 # real=1214
     if dataset is 'tless':
@@ -528,6 +506,7 @@ if __name__ == "__main__":
 
     dictVal = copy.deepcopy(dict)
 
+    wanna_cls = 1
     annoID = 0
     gloCo = 0
     all = n_samples
@@ -552,7 +531,6 @@ if __name__ == "__main__":
         if fileInd.endswith(".yaml"):
 
             start_time = time.time()
-            gloCo = gloCo + 1
 
             redname = fileInd[:-8]
 
@@ -562,330 +540,146 @@ if __name__ == "__main__":
             maskfile = maskPath + redname + "_mask.npy"
 
             depth_refine, mask, bboxes, poses, mask_ids, visibilities = manipulate_depth(gtfile, depfile, partfile)
-            try:
-                obj_mask = np.load(maskfile)
-            except Exception:
-                continue
+            obj_mask = np.load(maskfile)
             obj_mask = obj_mask.astype(np.int8)
 
             if bboxes is None:
                 excludedImgs.append(int(redname))
                 continue
 
-            #wanna_cls = 5
-            #check_cls = np.where(bboxes[:-1, 0] == (wanna_cls-1))
-            #check_vis = visibilities[check_cls].astype(np.float32)
-            #print(len(check_cls), check_vis < 0.7, check_vis)
-            #if not visibilities[check_cls] or check_vis < 0.7:
-            #    print('no cls ', wanna_cls)
-            #    continue
-
             depth_refine = np.multiply(depth_refine, 1000.0)  # to millimeters
             rows, cols = depth_refine.shape
 
-            for k in range(0, 2):
+            drawKern = [3, 5, 7]
+            freqKern = np.bincount(drawKern)
+            kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+            kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+            kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+            sBlur = random.uniform(0.25, 3.5)
+            sDep = random.uniform(0.002, 0.004)
+            kShadow.astype(int)
+            kMed.astype(int)
+            kBlur.astype(int)
+            kShadow = kShadow[0]
+            kMed = kMed[0]
+            kBlur = kBlur[0]
+            augmentation_var = 0  # [0 = full, 1 = sensor, 2 = simplex]
 
-                newredname = redname[1:] + str(k)
-
-                #newredname = redname[1:]
-
-                fileName = target + "images/train/" + newredname + '.jpg'
-                myFile = Path(fileName)
-                #print(newredname)
-                #print(myFile)
-
-                if myFile.exists():
-                    print('File exists, skip encoding and safing.')
-
-                else:
-                    if method == 'normals':
-                        normals, depth_refine_aug, depth_imp = get_normal(depth_refine, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
-                                                           for_vis=False)
-
-                    elif method == 'simplex':
-                        drawKern = [3, 5, 7]
-                        freqKern = np.bincount(drawKern)
-                        kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                        kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                        kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                        sBlur = random.uniform(0.25, 3.5)
-                        sDep = random.uniform(0.002, 0.004)
-                        kShadow.astype(int)
-                        kMed.astype(int)
-                        kBlur.astype(int)
-                        kShadow = kShadow[0]
-                        kMed = kMed[0]
-                        kBlur = kBlur[0]
-                        augmentation_var = 2  # [0 = full, 1 = sensor, 2 = simplex]
-                        depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep, augmentation_var)
-
-                        aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
-                                                         for_vis=False)
-
-                        #depth_imp[depth_imp > depthCut] = 0
-                        #scaCro = 255.0 / np.nanmax(depth_imp)
-                        #cross = np.multiply(depth_imp, scaCro)
-                        depthAug[depthAug > depthCut] = 0
-                        scaCro = 255.0 / np.nanmax(depthAug)
-                        cross = np.multiply(depthAug, scaCro)
-                        dep_sca = cross.astype(np.uint8)
-                        #cv2.imwrite(fileName, dep_sca)
-                        aug_xyz[:, :, 2] = dep_sca
-                        cv2.imwrite(fileName, aug_xyz)
-
-                    elif method == 'full':
-                        drawKern = [3, 5, 7]
-                        freqKern = np.bincount(drawKern)
-                        kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                        kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                        kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                        sBlur = random.uniform(0.25, 3.5)
-                        sDep = random.uniform(0.002, 0.004)
-                        kShadow.astype(int)
-                        kMed.astype(int)
-                        kBlur.astype(int)
-                        kShadow = kShadow[0]
-                        kMed = kMed[0]
-                        kBlur = kBlur[0]
-                        augmentation_var = 0  # [0 = full, 1 = sensor, 2 = simplex]
-                        #depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep, augmentation_var)
-                        if dataset is 'tless':
-                            depthAug = augmentTless(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep,
-                                                    augmentation_var)
-                        else:
-
-                            depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep,
+            depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep,
                                             augmentation_var)
 
-                        #depth2store = copy.deepcopy(depth_refine)
-                        #depth2store[depth_refine > depthCut] = 0
-                        #scaCro = 255.0 / np.nanmax(depth2store)
-                        #cross = np.multiply(depth2store, scaCro)
-                        #dep_sca = cross.astype(np.uint8)
-                        aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+            aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
                                                          for_vis=False)
-                        #aug_xyz[:,:,2] = dep_sca
-                        #cv2.imwrite(fileName, dep_sca)
-                        cv2.imwrite(fileName, aug_xyz)
 
-                imgID = int(newredname)
-                imgName = newredname + '.jpg'
-                #print(imgName)
+            bbvis = []
+            bb3vis = []
+            for i, bbox in enumerate(bboxes[:-1]):
 
-                # bb scaling because of image scaling
-                bbvis = []
-                #bbvis = (bboxes * bbsca).astype(int)
-                #bbvis = bbvis.astype(int)
-                bb3vis = []
-                cats = []
-                posvis = []
-                postra = []
-                #print(imgName)
-                for i, bbox in enumerate(bboxes[:-1]):
+                if (np.asscalar(bbox[0]) + 1) != wanna_cls:
+                    continue
 
-                    #if (np.asscalar(bbox[0]) + 1) != wanna_cls:
-                    #    continue
+                if visibilities[i] < 0.5:
+                    print('visivility: ', visibilities[i], ' skip!')
+                    continue
 
-                    if visibilities[i] < 0.5:
-                        print('visivility: ', visibilities[i], ' skip!')
+                bbox = bbox.astype(int)
+                x1 = np.asscalar(bbox[2])
+                y1 = np.asscalar(bbox[1])
+                x2 = np.asscalar(bbox[4])
+                y2 = np.asscalar(bbox[3])
+                nx1 = bbox[2]
+                ny1 = bbox[1]
+                nx2 = bbox[4]
+                ny2 = bbox[3]
+                w = (x2 - x1)
+                h = (y2 - y1)
+                box_x = int(x1 + w * 0.5)
+                box_y = int(y1 + h * 0.5)
+                if box_x < 128 or box_x > 511 or box_y < 128 or box_y > 351:
+                    continue
+
+                patch = aug_xyz[(box_y-128):(box_y+128), (box_x-128):(box_x+128),:]
+                patch = cv2.resize(patch, (128, 128))
+                mask_fg = obj_mask[(box_y-128):(box_y+128), (box_x-128):(box_x+128)]
+                mask_fg = cv2.resize(np.uint8(mask_fg), (128, 128))
+                mask_fg = np.where(mask_fg == mask_ids[i], 1, 0)
+                patch = np.concatenate((patch, mask_fg[:, :, np.newaxis]), axis=2)
+
+                crop = aug_xyz[y1:y2, x1:x2, :]
+                hm_target = np.zeros((128,128,8), dtype=np.float32)
+
+                rot = tf3d.quaternions.quat2mat(poses[i, 3:])
+                rot = np.asarray(rot, dtype=np.float32)
+
+                tDbox = rot.dot(threeD_boxes[bbox[0], :, :].T).T
+                tDbox = tDbox + np.repeat(poses[i, np.newaxis, 0:3], 8, axis=0)
+
+                box3D = toPix_array(tDbox)
+                box3D = np.reshape(box3D, (16))
+                bb3vis.append(box3D)
+
+                ref_img = np.zeros((128, 128), dtype=np.float32)
+
+                for j in range(0, box3D.size, 2):
+                    # kernel
+                    x = np.linspace(0, 9, 9, endpoint=False)
+                    y = scipy.stats.multivariate_normal.pdf(x, mean=4, cov=4.0)
+                    y = y.reshape(1, 9)
+                    GF = np.dot(y.T, y)
+                    cp_x = int((box3D[i] - (box_x-128)) * 0.5)
+                    cp_y = int((box3D[i+1] - (box_y-128)) * 0.5)
+
+                    if cp_x < 4 or cp_x > 123 or cp_y < 4 or cp_y > 123:
                         continue
 
-                    bbvis.append(bbox.astype(int))
-                    objID = np.asscalar(bbox[0]) + 1
-                    cats.append(objID)
+                    hm_target[cp_y - 4:cp_y + 5, cp_x - 4:cp_x + 5, int(j / 2)] = GF * (1.0 / np.amax(GF))
+                    #gauss255 = patch
+                    #gauss255[cp_y - 4:cp_y + 5, cp_x - 4:cp_x + 5, 0] = 255 * GF * (1.0/np.amax(GF))
+                    #gauss255[cp_y - 4:cp_y + 5, cp_x - 4:cp_x + 5, 1] = 255 * GF * (1.0/np.amax(GF))
+                    #gauss255[cp_y - 4:cp_y + 5, cp_x - 4:cp_x + 5, 2] = 255 * GF * (1.0/np.amax(GF))
 
-                    bbox = (bbox).astype(int)
+                    #ref_img[cp_y - 4:cp_y + 5, cp_x - 4:cp_x + 5] = 255 * GF * (1.0 / np.amax(GF))
 
-                    rot = tf3d.quaternions.quat2mat(poses[i, 3:])
-                    rot = np.asarray(rot, dtype=np.float32)
+                    #cv2.imwrite('/home/sthalham/visTests/DHM_gauss.png', ref_img)
+                    #cv2.imwrite('/home/sthalham/visTests/DHM_crop.png', gauss255)
+                    #print('step')
 
-                    tDbox = rot.dot(threeD_boxes[bbox[0], :, :].T).T
-                    tDbox = tDbox + np.repeat(poses[i, np.newaxis, 0:3], 8, axis=0)
+                    if visu is True:
+                        img = aug_xyz
+                        #print
+                        colR = random.randint(0, 255)
+                        colG = random.randint(0, 255)
+                        colB = random.randint(0, 255)
+                            
+                        pose = box3D
 
-                    #if objID == 10 or objID == 11:
-                    #    print(tf3d.euler.quat2euler(poses[i, 3:]))
+                        img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 2)
+                        img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 2)
+                        img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR, colG, colB), 2)
+                        img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR, colG, colB), 2)
+                        img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
+                        img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
+                        img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
+                        img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (colR, colG, colB), 2)
+                        img = cv2.line(img, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
+                        img = cv2.line(img, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
+                        img = cv2.line(img, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()), (colR, colG, colB), 2)
+                        img = cv2.line(img, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
 
-                    box3D = toPix_array(tDbox)
-                    box3D = np.reshape(box3D, (16))
-                    box3D = box3D.tolist()
-                    bb3vis.append(box3D)
+                        cv2.imwrite('/home/sthalham/visTests/DHM_refer.png', img)
 
-                    bbox = bbox.astype(int)
-                    x1 = np.asscalar(bbox[2])
-                    y1 = np.asscalar(bbox[1])
-                    x2 = np.asscalar(bbox[4])
-                    y2 = np.asscalar(bbox[3])
-                    nx1 = bbox[2]
-                    ny1 = bbox[1]
-                    nx2 = bbox[4]
-                    ny2 = bbox[3]
-                    w = (x2 - x1)
-                    h = (y2 - y1)
-                    boxWidths.append(w)
-                    boxHeights.append(h)
-                    bb = [x1, y1, w, h]
-                    area = w * h
-                    npseg = np.array([nx1, ny1, nx2, ny1, nx2, ny2, nx1, ny2])
-                    seg = npseg.tolist()
-
-                    pose = [np.asscalar(poses[i, 0]), np.asscalar(poses[i, 1]), np.asscalar(poses[i, 2]),
-                                np.asscalar(poses[i,3]), np.asscalar(poses[i,4]), np.asscalar(poses[i,5]),
-                                np.asscalar(poses[i,6])]
-                    if i != len(bboxes):
-                        pose[0:2] = toPix(pose[0:3])
-
-                    posvis.append(pose)
-                    tra = np.asarray(poses[i, :3], dtype=np.float32)
-                    postra.append(tra)
-
-                    #if pose[3] < 0.0:
-                    #    raise ValueError('w < 0.0')
-
-                    annoID = annoID + 1
-                    tempTA = {
-                        "id": annoID,
-                        "image_id": imgID,
-                        "category_id": objID,
-                        "bbox": bb,
-                        "pose": pose,
-                        "segmentation": box3D,
-                        "area": area,
-                        "iscrowd": 0
-                    }
-                    #print('norm q: ', np.linalg.norm(pose[3:]))
-
-                    dict["annotations"].append(tempTA)
-
-                tempTL = {
-                    "url": "cmp.felk.cvut.cz/t-less/",
-                    "id": imgID,
-                    "name": imgName
-                }
-                dict["licenses"].append(tempTL)
-
-                tempTV = {
-                    "license": 2,
-                    "url": "cmp.felk.cvut.cz/t-less/",
-                    "file_name": imgName,
-                    "height": resY,
-                    "width": resX,
-                    "date_captured": dateT,
-                    "id": imgID
-                }
-                dict["images"].append(tempTV)
+                patch = np.concatenate((patch, hm_target), axis=2)
+                img_name = '00000000'
+                img_name = img_name[:-len(str(gloCo))] + str(gloCo)
+                class_path = os.path.join(target, str(wanna_cls))
+                if len(class_path) < 1:
+                    class_path = '0' + class_path
+                if not os.path.exists(class_path):
+                    os.makedirs(class_path)
+                img_path = os.path.join(class_path, img_name)
+                np.save(img_path, patch)
+                #print(patch.shape)
 
                 gloCo += 1
 
-                elapsed_time = time.time() - start_time
-                times.append(elapsed_time)
-                meantime = sum(times)/len(times)
-                eta = ((all - gloCo) * meantime) / 60
-                if gloCo % 100 == 0:
-                    print('eta: ', eta, ' min')
-                    times = []
-
-                if visu is True:
-                    img = aug_xyz
-                    #img = cv2.imread(fileName, cv2.IMREAD_UNCHANGED)
-                    for i, bb in enumerate(bbvis[:]):
-
-                        #cv2.rectangle(aug_xyz, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
-                        #              (255, 255, 255), 2)
-                        #cv2.rectangle(img, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
-                        #              (0, 0, 0), 1)
-                        #
-                        font = cv2.FONT_HERSHEY_SIMPLEX
-                        bottomLeftCornerOfText = (int(bb[2]), int(bb[1]))
-                        fontScale = 1
-                        fontColor = (0, 0, 0)
-                        fontthickness = 1
-                        lineType = 2
-                        gtText = str(cats[i])
-
-                        fontColor2 = (255, 255, 255)
-                        fontthickness2 = 3
-                        cv2.putText(aug_xyz, gtText,
-                                bottomLeftCornerOfText,
-                                font,
-                                fontScale,
-                                fontColor2,
-                                fontthickness2,
-                                lineType)
-
-                        cv2.putText(aug_xyz, gtText,
-                                bottomLeftCornerOfText,
-                                font,
-                                fontScale,
-                                fontColor,
-                                fontthickness,
-                                lineType)
-
-
-                        #print(posvis[i])
-                        if i is not poses.shape[0]:
-                            pose = np.asarray(bb3vis[i], dtype=np.float32)
-
-                            #pose2D = posvis[i]
-                            #print(str(cats[i]))
-                            
-                            colR = random.randint(0, 255)
-                            colG = random.randint(0, 255)
-                            colB = random.randint(0, 255)
-                            '''
-                            #rot_lie = [[0.0, pose[3], pose[4]], [-pose[3], 0.0, pose[5]], [-pose[4], -pose[5], 0.0]]
-                            #ssm =np.asarray(rot_lie, dtype=np.float32)
-                            #map = geometry.rotations.map_hat(ssm)
-                            #quat = tf3d.euler.euler2quat(pose2D[3], pose2D[4], pose2D[5])
-                            #quat = quat / np.linalg.norm(quat)
-                            pose2D = np.concatenate([postra[i], pose2D[3:]])
-                            #print('x: ', (pose[0]-bb[2])/(bb[4]-bb[2]))
-                            #print('y: ', (pose[1] - bb[1]) / (bb[3] - bb[1]))
-                            #print(pose[0:2], bb[1:])
-
-                            #cv2.circle(img, (int(pose[0]), int(pose[1])), 5, (0, 255, 0), 3)
-                            draw_axis(aug_xyz, pose2D)
-                            '''
-
-                            img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
-
-                    cv2.imwrite(fileName, img)
-
-                    print('STOP')
-
-    catsInt = range(1,16)
-    #catsInt = [wanna_cls]
-
-    for s in catsInt:
-        objName = str(s)
-        tempC = {
-            "id": s,
-            "name": objName,
-            "supercategory": "object"
-        }
-        dict["categories"].append(tempC)
-
-    traAnno = target + "annotations/instances_train.json"
-
-    with open(traAnno, 'w') as fpT:
-        json.dump(dict, fpT)
-
-    excludedImgs.sort()
-    print('excluded images: ')
-    for ex in excludedImgs:
-        print(ex)
-    #boxWidths = np.asarray(boxWidths, np.float32)
-    #boxHeigths = np.asarray(boxHeigths, np.float32)
-    #print('box widths min and max: ', np.nanmin(boxWidths), np.nanmax(boxWidths))
-    #print('box widths min and max: ', np.nanmin(boxHeights), np.nanmax(boxHeigths))
     print('Chill for once in your life... everything\'s done')

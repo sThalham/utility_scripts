@@ -153,6 +153,63 @@ threeD_boxes[14, :, :] = np.array([[0.047, 0.0735, 0.0925],  # phone [94, 147, 1
 model_radii = np.array([0.041, 0.0928, 0.0675, 0.0633, 0.0795, 0.052, 0.0508, 0.0853, 0.0445, 0.0543, 0.048, 0.05, 0.0862, 0.0888, 0.071])
 
 
+#Input arguments:
+#pcd_temp_ = point cloud(open3d format) of a rendered object in the estimated pose, tf
+#pcd_scene_ =point cloud(open3d format) of a scene with surface normals (cropped from the ROI)
+#  - both pcd_temp_, pcd_scene_ are downsampled, voxel_size=0.005
+#    pcd_scene_ = voxel_down_sample(pcd_scene, voxel_size = 0.005)
+# - pcd_scene_ needs surface normals for PointToPlane ICP
+#   estimate_normals(pcd_scene_, search_param = KDTreeSearchParamHybrid(
+#                                 radius = 0.01, max_nn = 5))
+
+#inlier_thres = max_diameter (of each individual object)
+#tf = current pose estimation (4x4 matrix)
+#final_th = 0, (this is only used when you need fitness values with a particular threshold)
+
+#Output values:
+#[1] tf : transformation matrix after ICP
+#[2] inlier_rmse (mean value of inliers after the final icp)
+#[3] tf_pcd (point cloud after ICP)
+#[4] reg_p2p.fitness (fitness value)
+
+
+def get_evaluation(pcd_temp_,pcd_scene_,inlier_thres,tf,final_th,n_iter=5):#queue
+    tf_pcd =np.eye(4)
+
+    reg_p2p = registration_icp(pcd_temp_,pcd_scene_ , inlier_thres, np.eye(4),
+              TransformationEstimationPointToPoint(),
+              ICPConvergenceCriteria(max_iteration = 1)) #5?
+    tf = np.matmul(reg_p2p.transformation,tf)
+    tf_pcd = np.matmul(reg_p2p.transformation,tf_pcd)
+    pcd_temp_.transform(reg_p2p.transformation)
+
+    for i in range(4):
+        inlier_thres = reg_p2p.inlier_rmse*2
+        reg_p2p = registration_icp(pcd_temp_,pcd_scene_ , inlier_thres, np.eye(4),
+                  TransformationEstimationPointToPlane(),
+                  ICPConvergenceCriteria(max_iteration = 1)) #5?
+        tf = np.matmul(reg_p2p.transformation,tf)
+        tf_pcd = np.matmul(reg_p2p.transformation,tf_pcd)
+        pcd_temp_.transform(reg_p2p.transformation)
+    inlier_rmse = reg_p2p.inlier_rmse
+
+    ##Calculate fitness with depth_inlier_th
+    if(final_th>0):
+        inlier_thres = final_th #depth_inlier_th*2 #reg_p2p.inlier_rmse*3
+        reg_p2p = registration_icp(pcd_temp_,pcd_scene_, inlier_thres, np.eye(4),
+                  TransformationEstimationPointToPlane(),
+                  ICPConvergenceCriteria(max_iteration = 1)) #5?
+
+    if( np.abs(np.linalg.det(tf[:3,:3])-1)>0.001):
+        tf[:3,0]=tf[:3,0]/np.linalg.norm(tf[:3,0])
+        tf[:3,1]=tf[:3,1]/np.linalg.norm(tf[:3,1])
+        tf[:3,2]=tf[:3,2]/np.linalg.norm(tf[:3,2])
+    if( np.linalg.det(tf) < 0) :
+        tf[:3,2]=-tf[:3,2]
+
+    return tf,inlier_rmse,tf_pcd,reg_p2p.fitness
+
+
 def create_point_cloud(depth, fx, fy, cx, cy, ds):
 
     rows, cols = depth.shape
@@ -170,7 +227,6 @@ def create_point_cloud(depth, fx, fy, cx, cy, ds):
 
     cloud_final = np.transpose(np.array((xP, yP, zP)))
     cloud_final[cloud_final[:,2]==0] = np.NaN
-
 
     return cloud_final
 
@@ -244,11 +300,12 @@ if __name__ == "__main__":
     root = '/home/sthalham/workspace/RetNetPose/'
     #jsons = root + '3Dbox_linemod.json'
     #root = '/home/sthalham/workspace/MMAssist_pipeline/RetinaNet/'
+    #jsons = root + 'val_61.json'
     jsons = root + 'val_bbox_results.json'
     #jsons = root + 'rgd20_results.json'
     model_path = "/home/sthalham/data/LINEMOD/models/"
 
-    visu = False
+    visu = True
 
     json_data = open(jsons).read()
     data = json.loads(json_data)
@@ -287,7 +344,7 @@ if __name__ == "__main__":
         print(s)
 
         #if s == '15' or s == '13' or s == '06' or s == '01' or s == '09' or s == '02' or s == '07' or s == '04' or s == '12' or s == '08' or s == '11':
-        if s != '14':
+        if s != '08':
             continue
 
         rgbPath = testData + s + "/rgb/"
@@ -314,7 +371,7 @@ if __name__ == "__main__":
 
         counter = 0
 
-        posAng = 0
+        posAng = 0  
         fn = 0
         for ss in subsub:
 
@@ -324,10 +381,10 @@ if __name__ == "__main__":
             #print(ss)
 
             proImg = proImg + 1
-            if proImg % 100 == 0:
-                print('----------------------------------------------------------------------------')
-                print('------------Processing image ', proImg, ' / ', allImg, ' -------------------')
-                print('----------------------------------------------------------------------------')
+            #if proImg % 100 == 0:
+            #    print('----------------------------------------------------------------------------')
+            #    print('------------Processing image ', proImg, ' / ', allImg, ' -------------------')
+            #    print('----------------------------------------------------------------------------')
 
             imgname = ss
 
@@ -360,11 +417,11 @@ if __name__ == "__main__":
             gtPoses = []
             gtRots = []
             for gt in gtImg:
-                if gt['obj_id'] == s:
-                    gtBoxes.append(gt['obj_bb'])
-                    gtCats.append(gt['obj_id'])
-                    gtPoses.append(gt['cam_t_m2c'])
-                    gtRots.append(gt["cam_R_m2c"])
+                #if gt['obj_id'] == s:
+                gtBoxes.append(gt['obj_bb'])
+                gtCats.append(gt['obj_id'])
+                gtPoses.append(gt['cam_t_m2c'])
+                gtRots.append(gt["cam_R_m2c"])
 
             '''
             img = cv2.imread(depImgPath, -1)
@@ -401,6 +458,7 @@ if __name__ == "__main__":
             detIMG = []
             for det in data:
                 if det['image_id'] == img_id:
+
                     detIMG = det['image_id']
                     if det['category_id'] == s:
                         #if det['score'] > 0.55:
@@ -410,6 +468,8 @@ if __name__ == "__main__":
                         detPoses.append(det['pose'])
                         #detSeg.append(det['segmentation'])
                         #print(det['pose'])
+
+
 
             #temp = False
             #if temp == True:
@@ -431,7 +491,11 @@ if __name__ == "__main__":
                 truePos = []
                 #truePos = 0
                 fnCur = 1
+                pleaze = True
+                print(gtCats)
+                print(detCats)
                 for i, dC in enumerate(detCats):
+
                     for j, gC in enumerate(gtCats):
                         if dC is gC:
 
@@ -462,14 +526,31 @@ if __name__ == "__main__":
                                 K = np.float32([fxkin, 0., cxkin, 0., fykin, cykin, 0., 0., 1.]).reshape(3, 3)
                                 retval, orvec, otvec, inliers = cv2.solvePnPRansac(objectPoints=obj_points,
                                                                               imagePoints=est_points, cameraMatrix=K,
-                                                                              distCoeffs=None, rvec=None, tvec=itvec, useExtrinsicGuess=True, iterationsCount=100,
+                                                                              distCoeffs=None, rvec=None, tvec=None, useExtrinsicGuess=False, iterationsCount=100,
                                                                               reprojectionError=8.0, confidence=0.99,
                                                                               flags=cv2.SOLVEPNP_ITERATIVE)
                                 rmat, _ = cv2.Rodrigues(orvec)
                                 #rd = re(np.array(gtRots[j], dtype=np.float32).reshape(3, 3), rmat)
                                 #xyz = te((np.array(gtPoses[j], dtype=np.float32)*0.001), (otvec.T))
-                                print('--------------------- ICP refinement -------------------')
+                                #if not math.isnan(rd):
+                                #    rotD.append(rd)
+                                #    if rd < 5.0 and xyz < 0.05:
+                                #        less5.append(rd)
+                                #if not math.isnan(xyz):
+                                #    xyzD.append(xyz)
+                                #    if xyz < 0.05:
+                                #        less5cm.append(xyz)
+                                #itvec = otvec
+                                R_est = rmat
+                                t_est = otvec
 
+                                rot = tf3d.quaternions.mat2quat(R_est)
+                                pose = np.concatenate(
+                                    (np.array(otvec[:, 0], dtype=np.float32), np.array(rot, dtype=np.float32)), axis=0)
+                                posevis.append(pose)
+
+                                print('--------------------- ICP refinement -------------------')
+                                '''
                                 pcd_img = create_point_cloud(image_dep, fxkin, fykin, cxkin, cykin, 0.001)
                                 pcd_img = pcd_img.reshape((480, 640, 3))[int(b1[1]):int(b1[3]), int(b1[0]):int(b1[2]), :]
                                 pcd_img = pcd_img.reshape((pcd_img.shape[0]*pcd_img.shape[1], 3))
@@ -490,6 +571,7 @@ if __name__ == "__main__":
                                 R_est = reg_p2p.transformation[:3, :3]
                                 t_est = reg_p2p.transformation[:3, 3]
 
+                                
                                 print('--------------------- Evaluate on Metrics -------------------')
                                 R_gt = np.array(gtRots[j], dtype=np.float32).reshape(3, 3)
                                 t_gt = np.array(gtPoses[j], dtype=np.float32) * 0.001
@@ -499,8 +581,9 @@ if __name__ == "__main__":
 
                                 rot = tf3d.quaternions.mat2quat(R_est)
                                 pose = np.concatenate((np.array(otvec[:,0], dtype=np.float32), np.array(rot, dtype=np.float32)), axis=0)
-                                posevis.append(pose)
+                                
 
+                                
                                 if not math.isnan(rd):
                                     rotD.append(rd)
                                     if rd < 5.0 and xyz < 0.05:
@@ -514,14 +597,14 @@ if __name__ == "__main__":
                                 #model_pts = np.asarray(pcd_model.points)
 
                                 err_vsd = vsd(R_est, t_est * 1000.0, R_gt, t_gt * 1000.0, model_vsd_mm, image_dep, K, 0.3, 20.0)
-                                print('vsd: ', err_vsd)
+                                #print('vsd: ', err_vsd)
                                 if not math.isnan(err_vsd):
                                     vsd_e.append(err_vsd)
                                     if err_vsd < 0.3:
                                         vsd_less_t.append(err_vsd)
 
                                 err_repr = reproj(K, R_est, t_est, R_gt, t_gt, model_vsd["pts"])
-                                print('repr: ', err_repr)
+                                #print('repr: ', err_repr)
 
                                 if not math.isnan(err_repr):
                                     rep_e.append(err_repr)
@@ -534,12 +617,13 @@ if __name__ == "__main__":
                                 else:
                                     err_add = add(R_est, t_est, R_gt, t_gt, model_vsd["pts"])
 
-                                print('3Dpose: ', err_add, 'th: ', model_radii[dC-1]*2*0.1)
+                                #print('3Dpose: ', err_add, 'th: ', model_radii[dC-1]*2*0.1)
 
                                 if not math.isnan(err_add):
                                     add_e.append(err_add)
                                     if err_add < (model_radii[dC-1]*2*0.1):
                                         add_less_d.append(err_add)
+                                '''
 
                             else:
                                 falsePos.append(dC)
@@ -560,6 +644,8 @@ if __name__ == "__main__":
                 #print(falseNegLst[s])
 
                 # VISUALIZATION
+
+                print(detCats)
                 if visu == True:
 
                     #for i, categ in enumerate(gtCats):
@@ -567,9 +653,8 @@ if __name__ == "__main__":
 
                     img = cv2.imread(rgbImgPath, -1)
                     img_gt = copy.deepcopy(img)
-                    #for i, bb in enumerate(detBoxes):
-                    #for i, bb in enumerate(gtBoxes):
-                        #print(bb)
+                    for i, bb in enumerate(detBoxes):
+                        print(bb)
                         #cv2.rectangle(img, (int(bb[0]), int(bb[1])), (int(bb[0]) + int(bb[2]), int(bb[1]) + int(bb[3])),
                         #                  (0, 0, 0), 3)
                         #cv2.rectangle(img, (int(bb[0]), int(bb[1])), (int(bb[0]) + int(bb[2]), int(bb[1]) + int(bb[3])),
@@ -597,6 +682,7 @@ if __name__ == "__main__":
                         #img[:, :, 1] = np.where(maskori == 1, g, img[:, :, 1])
                         #img[:, :, 2] = np.where(maskori == 1, b, img[:, :, 2])
 
+
                         pose2D = detPoses[i]
                         # print(str(cats[i]))
                         pose = np.asarray(detPoses[i], dtype=np.float32)
@@ -604,46 +690,76 @@ if __name__ == "__main__":
                         #colG = np.random.uniform(0, 255)
                         #colB = np.random.uniform(0, 255)
 
-                        colR = 249
+                        colR = 242
                         colG = 119
                         colB = 25
 
-                        colR1 = 149
+                        colR1 = 242
                         colG1 = 119
-                        colB1 = 179
+                        colB1 = 25
 
-                        colR2 = 190
-                        colG2 = 78
-                        colB2 = 194
+                        colR2 = 242
+                        colG2 = 119
+                        colB2 = 25
 
-                        colR3 = 61
-                        colG3 = 207
-                        colB3 = 194
+                        colR3 = 65
+                        colG3 = 102
+                        colB3 = 245
 
-                        colR4 = 64
-                        colG4 = 12
-                        colB4 = 194
+                        colR4 = 65
+                        colG4 = 102
+                        colB4 = 245
 
-                        colR5 = 111
-                        colG5 = 78
-                        colB5 = 246
+                        colR5 = 65
+                        colG5 = 102
+                        colB5 = 245
 
-                        img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 3)
-                        img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 3)
-                        img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR1, colG1, colB1), 3)
-                        img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR1, colG1, colB1), 3)
-                        img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR2, colG2, colB2), 3)
-                        img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR2, colG2, colB2), 3)
-                        img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR5, colG5, colB5), 3)
-                        img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (colR5, colG5, colB5), 3)
+                        img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (255, 255, 255), 5)
+                        img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (255, 255, 255), 5)
+                        img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (255, 255, 255),
+                                       5)
+                        img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (255, 255, 255),
+                                       5)
+                        img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (255, 255, 255),
+                                       5)
+                        img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (255, 255, 255),
+                                       5)
+                        img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (255, 255, 255),
+                                       5)
+                        img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (255, 255, 255),
+                                       5)
+                        img = cv2.line(img, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()),
+                                       (255, 255, 255),
+                                       5)
+                        img = cv2.line(img, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()),
+                                       (255, 255, 255),
+                                       5)
+                        img = cv2.line(img, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()),
+                                       (255, 255, 255),
+                                       5)
+                        img = cv2.line(img, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()),
+                                       (255, 255, 255),
+                                       5)
+
+                        img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 4)
+                        img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 4)
+                        img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR1, colG1, colB1), 4)
+                        img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR1, colG1, colB1), 4)
+                        img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR2, colG2, colB2), 4)
+                        img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR2, colG2, colB2), 4)
+                        img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR5, colG5, colB5), 4)
+                        img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (colR5, colG5, colB5), 4)
                         img = cv2.line(img, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()), (colR3, colG3, colB3),
-                                       3)
+                                       4)
                         img = cv2.line(img, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()), (colR3, colG3, colB3),
-                                       3)
+                                       4)
                         img = cv2.line(img, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()), (colR4, colG4, colB4),
-                                       3)
+                                       4)
                         img = cv2.line(img, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()), (colR4, colG4, colB4),
-                                       3)
+                                       4)
+
+
+
 
 
 
@@ -654,25 +770,23 @@ if __name__ == "__main__":
                         fontthickness = 2
                         lineType = 2
 
-                        if dataset == 'linemod':
-                            if detCats[i] == 1: cate = 'Ape'
-                            elif detCats[i] == 2: cate = 'Benchvise'
-                            elif detCats[i] == 3: cate = 'Bowl'
-                            elif detCats[i] == 4: cate = 'Camera'
-                            elif detCats[i] == 5: cate = 'Can'
-                            elif detCats[i] == 6: cate = 'Cat'
-                            elif detCats[i] == 7: cate = 'Cup'
-                            elif detCats[i] == 8: cate = 'Driller'
-                            elif detCats[i] == 9: cate = 'Duck'
-                            elif detCats[i] == 10: cate = 'Eggbox'
-                            elif detCats[i] == 11: cate = 'Glue'
-                            elif detCats[i] == 12: cate = 'Holepuncher'
-                            elif detCats[i] == 13: cate = 'Iron'
-                            elif detCats[i] == 14: cate = 'Lamp'
-                            elif detCats[i] == 15: cate = 'Phone'
-                            gtText = cate
-                        else:
-                            gtText = str(detCats[i])
+
+                        if detCats[i] == 1: cate = 'Ape'
+                        elif detCats[i] == 2: cate = 'Benchvise'
+                        elif detCats[i] == 3: cate = 'Bowl'
+                        elif detCats[i] == 4: cate = 'Camera'
+                        elif detCats[i] == 5: cate = 'Can'
+                        elif detCats[i] == 6: cate = 'Cat'
+                        elif detCats[i] == 7: cate = 'Cup'
+                        elif detCats[i] == 8: cate = 'Driller'
+                        elif detCats[i] == 9: cate = 'Duck'
+                        elif detCats[i] == 10: cate = 'Eggbox'
+                        elif detCats[i] == 11: cate = 'Glue'
+                        elif detCats[i] == 12: cate = 'Holepuncher'
+                        elif detCats[i] == 13: cate = 'Iron'
+                        elif detCats[i] == 14: cate = 'Lamp'
+                        elif detCats[i] == 15: cate = 'Phone'
+                        gtText = cate
                         #gtText = cate + " / " + str(detSco[i])
 
                         fontColor2 = (0, 0, 0)
@@ -695,14 +809,16 @@ if __name__ == "__main__":
 
 
                         #R = np.asarray(gtRots[i], dtype=np.float32)
-                        #rot = tf3d.quaternions.mat2quat(R.reshape(3, 3))
+                        rot = tf3d.quaternions.mat2quat(R_est)
                         #tra = np.asarray(gtPoses[i], dtype=np.float32) * 0.001
+                        tra = t_est
                         #xpix = ((tra[0] * fxkin) / tra[2]) + cxkin
                         #ypix = ((tra[1] * fykin) / tra[2]) + cykin
                         #zpix = tra[2] * 0.001 * fxkin
-                        #pose = np.concatenate([tra.transpose(), rot.transpose()])
+                        print(tra.shape, rot.shape)
+                        pose = np.concatenate([tra[:,0].transpose(), rot.transpose()])
                         #print('gt rotation: ', rot)
-                        #draw_axis(img_gt, pose)
+                        #draw_axis(img, pose)
                         '''
                         rot = np.asarray(detPoses[i], dtype=np.float32)
                         pose = np.concatenate([tra.transpose(), rot.transpose()])
@@ -716,48 +832,110 @@ if __name__ == "__main__":
                        # cv2.circle(img, (int(detPoses[i][0]), int(detPoses[i][1])), 5, (255,0,0), 3)
                         #cv2.circle(img, (int(xpix), int(ypix)), 5, (0, 255, 0), 3)
                         '''
-                        #rot = np.asarray(gtRots[0], dtype=np.float32).reshape((3,3))
-                        #tra = np.asarray(gtPoses[0], dtype=np.float32) * 0.001
 
-                        #tDbox = rot.dot(threeD_boxes[gtCats[0]-1, :, :].T).T
-                        #tDbox = tDbox + np.repeat(tra[:, np.newaxis], 8, axis=1).T
+                        rot = np.asarray(gtRots[0], dtype=np.float32).reshape((3,3))
+                        tra = np.asarray(gtPoses[0], dtype=np.float32) * 0.001
+                        tDbox = rot.dot(threeD_boxes[gtCats[0]-1, :, :].T).T
+                        tDbox = tDbox + np.repeat(tra[:, np.newaxis], 8, axis=1).T
 
-                        #box3D = toPix_array(tDbox)
-                        #box3D = np.reshape(box3D, (16))
-                        #pose = box3D
+                        box3D = toPix_array(tDbox)
+                        box3D = np.reshape(box3D, (16))
+                        pose = box3D
 
+                        img_gt = cv2.line(img_gt, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()),
+                                          (255, 255, 255), 5)
+                        img_gt = cv2.line(img_gt, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()),
+                                          (255, 255, 255), 5)
+                        img_gt = cv2.line(img_gt, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()),
+                                          (255, 255, 255), 5)
+                        img_gt = cv2.line(img_gt, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()),
+                                          (255, 255, 255), 5)
+                        img_gt = cv2.line(img_gt, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()),
+                                          (255, 255, 255), 5)
+                        img_gt = cv2.line(img_gt, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()),
+                                          (255, 255, 255), 5)
+                        img_gt = cv2.line(img_gt, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()),
+                                          (255, 255, 255), 5)
+                        img_gt = cv2.line(img_gt, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()),
+                                          (255, 255, 255), 5)
+                        img_gt = cv2.line(img_gt, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()),
+                                          (255, 255, 255),
+                                          5)
+                        img_gt = cv2.line(img_gt, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()),
+                                          (255, 255, 255),
+                                          5)
+                        img_gt = cv2.line(img_gt, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()),
+                                          (255, 255, 255),
+                                          5)
+                        img_gt = cv2.line(img_gt, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()),
+                                          (255, 255, 255),
+                                          5)
 
+                        img_gt = cv2.line(img_gt, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 4)
+                        img_gt = cv2.line(img_gt, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 4)
+                        img_gt = cv2.line(img_gt, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR1, colG1, colB1), 4)
+                        img_gt = cv2.line(img_gt, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR1, colG1, colB1), 4)
+                        img_gt = cv2.line(img_gt, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR2, colG2, colB2), 4)
+                        img_gt = cv2.line(img_gt, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR2, colG2, colB2), 4)
+                        img_gt = cv2.line(img_gt, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR5, colG5, colB5), 4)
+                        img_gt = cv2.line(img_gt, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (colR5, colG5, colB5), 4)
+                        img_gt = cv2.line(img_gt, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()), (colR3, colG3, colB3),
+                                       4)
+                        img_gt = cv2.line(img_gt, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()), (colR3, colG3, colB3),
+                                       4)
+                        img_gt = cv2.line(img_gt, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()), (colR4, colG4, colB4),
+                                       4)
+                        img_gt = cv2.line(img_gt, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()), (colR4, colG4, colB4),
+                                       4)
 
-                        #img_gt = cv2.line(img_gt, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 3)
-                        #img_gt = cv2.line(img_gt, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 3)
-                        #img_gt = cv2.line(img_gt, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR1, colG1, colB1), 3)
-                        #img_gt = cv2.line(img_gt, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR1, colG1, colB1), 3)
-                        #img_gt = cv2.line(img_gt, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR2, colG2, colB2), 3)
-                        #img_gt = cv2.line(img_gt, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR2, colG2, colB2), 3)
-                        #img_gt = cv2.line(img_gt, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR5, colG5, colB5), 3)
-                        #img_gt = cv2.line(img_gt, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (colR5, colG5, colB5), 3)
-                        #img_gt = cv2.line(img_gt, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()), (colR3, colG3, colB3),
-                        #               3)
-                        #img_gt = cv2.line(img_gt, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()), (colR3, colG3, colB3),
-                        #               3)
-                        #img_gt = cv2.line(img_gt, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()), (colR4, colG4, colB4),
-                        #               3)
-                        #img_gt = cv2.line(img_gt, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()), (colR4, colG4, colB4),
-                        #               3)
+                        cv2.putText(img_gt, gtText,
+                                    bottomLeftCornerOfText,
+                                    font,
+                                    fontScale,
+                                    fontColor2,
+                                    fontthickness2,
+                                    lineType)
+
+                        cv2.putText(img_gt, gtText,
+                                    bottomLeftCornerOfText,
+                                    font,
+                                    fontScale,
+                                    fontColor,
+                                    fontthickness,
+                                    lineType)
 
                         #draw_axis(img, posevis[0])
 
-                    #name = '/home/sthalham/visTests/detected.jpg'
-                    #img_con = np.concatenate((img, img_gt), axis=1)
-                    #cv2.imwrite(name, img_con)
+                        #rot = tf3d.quaternions.quat2mat(poses[i, 3:])
+                        #rot = np.asarray(rot, dtype=np.float32)
+
+                        #modelPT = R_est.dot(model_vst["pts"]).T
+                        #modelPT = modelPT + np.repeat(t_est[np.newaxis, 0:3], 8, axis=0)
+
+                        #pcd_img = model_vsd["pts"].reshape((480, 640, 3))
+                        #pcd_img = pcd_img.reshape((pcd_img.shape[0] * pcd_img.shape[1], 3))
+                        #name = '/home/sthalham/visTests/object.jpg'
+                        #cv2.imwrite(name, pcd_img)
+
+                    name = '/home/sthalham/visTests/detected.jpg'
+                    img_con = np.concatenate((img, img_gt), axis=1)
+                    cv2.imwrite(name, img_con)
                     name_est = '/home/sthalham/visTests/detected_est.jpg'
-                    cv2.imwrite(name_est, img)
+                    cv2.imwrite(name_est, img_con)
+
+                    scaCro = 255.0 / np.nanmax(image_dep)
+                    visImg = np.multiply(image_dep, scaCro)
+                    visImg = visImg.astype(np.uint8)
+                    name_est = '/home/sthalham/visTests/img_dep.jpg'
+                    cv2.imwrite(name_est, visImg)
 
                     print('STOP')
 
             else:
                 pass
             #falseNegLst[s] = fn
+
+        print(counter)
 
         #detAcc = detCatLst[s] / gtCatLst[s]
         #print('accuracy category ', s, ': ', detAcc)

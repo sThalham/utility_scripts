@@ -313,7 +313,7 @@ if __name__ == "__main__":
     else:
         raise ValueError('Specify the dataset correctly')
 
-    target = '/home/sthalham/data/prepro/val_occlusion/'
+    target = '/home/sthalham/data/prepro/val_linemod_rgb/'
     # print(root)
     visu = False
 
@@ -347,11 +347,11 @@ if __name__ == "__main__":
     times = []
 
     for s in sub:
-        print(s)
-        if s != '02':
-            continue
+        #print(s)
+        #if s != '02':
+        #    continue
 
-        print('passed')
+        #print('passed')
         rgbPath = root + s + "/rgb/"
         depPath = root + s + "/depth/"
         gtPath = root + s + "/gt.yml"
@@ -434,9 +434,9 @@ if __name__ == "__main__":
             # print(gtYML[int(ss)])
             gtImg = gtYML[int(ss)]
 
-            #drawN = [1, 2, 2, 2, 2, 2, 2, 2]
-            #freq = np.bincount(drawN)
-            #rnd = np.random.choice(np.arange(len(freq)), 1, p=freq / len(drawN), replace=False)
+            drawN = [1, 2, 2, 2, 2, 2, 2, 2]
+            freq = np.bincount(drawN)
+            rnd = np.random.choice(np.arange(len(freq)), 1, p=freq / len(drawN), replace=False)
 
             # change drawN if you want a data split
             #print("storage choice: ", rnd)
@@ -445,10 +445,10 @@ if __name__ == "__main__":
             cat_vis = []
             camR_vis = []
             camT_vis = []
-            #if rnd == 1:
-            rnd = True
-            print(rnd)
-            if rnd == True:
+            #if rnd == True:
+            #rnd = True
+            #print(rnd)
+            if rnd == 1:
 
                 fileName = target + 'images/val/' + imgNam
                 print(fileName)
@@ -457,7 +457,7 @@ if __name__ == "__main__":
                     print('File exists, skip encoding, ', fileName)
                 else:
                     # imgI = encodeImage(depImg)
-                    imgI, depth_refine, depth_inp = get_normal(depImg, fx=fxca, fy=fyca, cx=cxca, cy=cyca, for_vis=False)
+                    #imgI, depth_refine, depth_inp = get_normal(depImg, fx=fxca, fy=fyca, cx=cxca, cy=cyca, for_vis=False)
                     depName = target + 'images/val/' + tempSS + imgNum + '_dep.png'
                     copyfile(depImgPath, depName)
 
@@ -467,7 +467,7 @@ if __name__ == "__main__":
                     #dep_sca = cross.astype(np.uint8)
                     #imgI[:, :, 2] = dep_sca
 
-                    cv2.imwrite(fileName, imgI)
+                    cv2.imwrite(fileName, rgbImg)
                     print("storing image in : ", fileName)
 
                 #bbsca = 720.0 / 640.0

@@ -262,7 +262,7 @@ def get_normal(depth_refine, fx=-1, fy=-1, cx=-1, cy=-1, for_vis=True):
     cross = np.nan_to_num(cross)
 
     #cross[depth_refine <= 200] = 0  # 0 and near range cut
-    cross[depth_refine > depthCut] = 0  # far range cut
+    #cross[depth_refine > depthCut] = 0  # far range cut
     if not for_vis:
         scaDep = 1.0 / np.nanmax(depth_refine)
         depth_refine = np.multiply(depth_refine, scaDep)
@@ -313,7 +313,7 @@ if __name__ == "__main__":
     else:
         raise ValueError('Specify the dataset correctly')
 
-    target = '/home/sthalham/data/prepro/val_occlusion/'
+    target = '/home/sthalham/workspace/cycleGAN/datasets/lm_syn2real/'
     # print(root)
     visu = False
 
@@ -347,11 +347,6 @@ if __name__ == "__main__":
     times = []
 
     for s in sub:
-        print(s)
-        if s != '02':
-            continue
-
-        print('passed')
         rgbPath = root + s + "/rgb/"
         depPath = root + s + "/depth/"
         gtPath = root + s + "/gt.yml"
@@ -364,7 +359,6 @@ if __name__ == "__main__":
             gtYML = yaml.load(streamGT)
 
         subsub = os.listdir(rgbPath)
-        print(rgbPath)
 
         counter = 0
         for ss in subsub:
@@ -434,9 +428,9 @@ if __name__ == "__main__":
             # print(gtYML[int(ss)])
             gtImg = gtYML[int(ss)]
 
-            #drawN = [1, 2, 2, 2, 2, 2, 2, 2]
-            #freq = np.bincount(drawN)
-            #rnd = np.random.choice(np.arange(len(freq)), 1, p=freq / len(drawN), replace=False)
+            drawN = [1, 1, 2, 2, 2, 2, 3]
+            freq = np.bincount(drawN)
+            rnd = np.random.choice(np.arange(len(freq)), 1, p=freq / len(drawN), replace=False)
 
             # change drawN if you want a data split
             #print("storage choice: ", rnd)
@@ -445,311 +439,38 @@ if __name__ == "__main__":
             cat_vis = []
             camR_vis = []
             camT_vis = []
-            #if rnd == 1:
-            rnd = True
-            print(rnd)
-            if rnd == True:
+            if rnd == 1:
+            #if s == int(2):
 
-                fileName = target + 'images/val/' + imgNam
-                print(fileName)
+                fileName = target + 'trainB/' + imgNam
                 myFile = Path(fileName)
                 if myFile.exists():
                     print('File exists, skip encoding, ', fileName)
                 else:
                     # imgI = encodeImage(depImg)
                     imgI, depth_refine, depth_inp = get_normal(depImg, fx=fxca, fy=fyca, cx=cxca, cy=cyca, for_vis=False)
-                    depName = target + 'images/val/' + tempSS + imgNum + '_dep.png'
-                    copyfile(depImgPath, depName)
-
-                    #depth_inp[depth_inp > depthCut] = 0
-                    #scaCro = 255.0 / np.nanmax(depth_inp)
-                    #cross = np.multiply(depth_inp, scaCro)
-                    #dep_sca = cross.astype(np.uint8)
-                    #imgI[:, :, 2] = dep_sca
+                    #depName = target + 'images/val/' + tempSS + imgNum + '_dep.png'
 
                     cv2.imwrite(fileName, imgI)
                     print("storing image in : ", fileName)
 
-                #bbsca = 720.0 / 640.0
-                for i in range(len(gtImg)):
+            elif rnd == 3:
+            #if s == int(2):
 
-                    curlist = gtImg[i]
-                    obj_id = curlist["obj_id"]
-                    #if obj_id > 6:
-                    #    obj_id = obj_id - 2
-                    #elif obj_id > 2:
-                    #    obj_id = obj_id - 1
-                    obj_bb = curlist["obj_bb"]
-                    bbox_vis.append(obj_bb)
-                    cat_vis.append(obj_id)
-
-                    R = curlist["cam_R_m2c"]
-                    T = curlist["cam_t_m2c"]
-                    #tra = np.asarray(T, dtype=np.float32)
-                    #R = np.asarray(R, dtype=np.float32)
-                    #rot = tf3d.quaternions.mat2quat(R.reshape(3, 3))
-                    #rot = np.asarray(rot, dtype=np.float32)
-                    #camR_vis.append([np.asscalar(rot[0]), np.asscalar(rot[1]), np.asscalar(rot[2]), np.asscalar(rot[2])])
-                    #camT_vis.append(tra)
-
-                    #pose = np.concatenate([tra.transpose(), R.transpose()])
-                    #pose = [np.asscalar(pose[0]), np.asscalar(pose[1]), np.asscalar(pose[2]),
-                    #        np.asscalar(pose[3]), np.asscalar(pose[4]), np.asscalar(pose[5]),
-                    #       np.asscalar(pose[6]), np.asscalar(pose[7]), np.asscalar(pose[8]), np.asscalar(pose[9]), np.asscalar(pose[10]),np.asscalar(pose[11])]
-
-                    # pose [x, y, z, roll, pitch, yaw]
-                    R = np.asarray(R, dtype=np.float32)
-                    rot = tf3d.euler.mat2euler(R.reshape(3, 3))
-                    rot = np.asarray(rot, dtype=np.float32)
-                    tra = np.asarray(T, dtype=np.float32)
-                    pose = [np.asscalar(tra[0]), np.asscalar(tra[1]), np.asscalar(tra[2]),
-                            np.asscalar(rot[0]), np.asscalar(rot[1]), np.asscalar(rot[2])]
-                    camR_vis.append([np.asscalar(rot[0]), np.asscalar(rot[1]), np.asscalar(rot[2])])
-                    camT_vis.append(tra)
-
-                    area = obj_bb[2] * obj_bb[3]
-
-                    # placeholder
-                    box3D = np.zeros((16), dtype=np.float32).tolist()
-
-                    nx1 = obj_bb[0]
-                    ny1 = obj_bb[1]
-                    nx2 = nx1 + obj_bb[2]
-                    ny2 = ny1 + obj_bb[3]
-                    npseg = np.array([nx1, ny1, nx2, ny1, nx2, ny2, nx1, ny2])
-                    cont = npseg.tolist()
-
-                    annoID = annoID + 1
-                    tempVa = {
-                        "id": annoID,
-                        "image_id": img_id,
-                        "category_id": obj_id,
-                        "bbox": obj_bb,
-                        "pose": pose,
-                        "segmentation": box3D,
-                        "area": area,
-                        "iscrowd": 0
-                    }
-                    dictVal["annotations"].append(tempVa)
-
-                # create dictionaries for json
-                tempVl = {
-                    "url": "cmp.felk.cvut.cz/t-less/",
-                    "id": img_id,
-                    "name": iname
-                }
-                dictVal["licenses"].append(tempVl)
-
-                tempVi = {
-                    "license": 2,
-                    "url": "cmp.felk.cvut.cz/t-less/",
-                    "file_name": iname,
-                    "height": rows,
-                    "width": cols,
-                    "date_captured": dateT,
-                    "id": img_id
-                }
-                dictVal["images"].append(tempVi)
-
-            else:
-                continue
-                fileName = target + 'images/test/' + imgNam
+                fileName = target + 'testB/' + imgNam
                 myFile = Path(fileName)
                 if myFile.exists():
                     print('File exists, skip encoding, ', fileName)
                 else:
                     # imgI = encodeImage(depImg)
-                    imgI, depth_refine = get_normal(depImg, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin, for_vis=False)
-                    depImg[depImg > depthCut] = 0
-                    scaCro = 255.0 / np.nanmax(depImg)
-                    cross = np.multiply(depImg, scaCro)
-                    dep_sca = cross.astype(np.uint8)
-                    imgI[:, :, 2] = dep_sca
-                    cv2.imwrite(fileName, dep_sca)
-                    #cv2.imwrite(fileName, imgI)
+                    imgI, depth_refine, depth_inp = get_normal(depImg, fx=fxca, fy=fyca, cx=cxca, cy=cyca, for_vis=False)
+                    #depName = target + 'images/val/' + tempSS + imgNum + '_dep.png'
+
+                    cv2.imwrite(fileName, imgI)
                     print("storing image in : ", fileName)
 
-                for i in range(len(gtImg)):
-
-                    curlist = gtImg[i]
-                    obj_id = curlist["obj_id"]
-                    obj_bb = curlist["obj_bb"]
-                    bbox_vis.append(obj_bb)
-                    cat_vis.append(obj_id)
-
-                    R = curlist["cam_R_m2c"]
-                    T = curlist["cam_t_m2c"]
-                    tra = np.asarray(T, dtype=np.float32)
-                    R = np.asarray(R, dtype=np.float64)
-                    #rot = tf3d.quaternions.mat2quat(R.reshape(3, 3))
-                    #rot = tf3d.euler.quat2mat(rot)
-                    #rot = np.asarray(rot, dtype=np.float32)
-                    #lie = geometry.rotations.hat_map(rot)
-                    #lie = geometry.poses.pose_from_rotation_translation(rot, tra)
-                    #tra = np.asarray(T, dtype=np.float32)
-                    #camR_vis.append([np.asscalar(lie[0, 1]), np.asscalar(lie[0, 2]), np.asscalar(lie[1, 2])])
-                    #camT_vis.append(tra)
-
-                    #pose = np.concatenate([tra.transpose(), rot.transpose()])
-                    #pose = [np.asscalar(pose[0]), np.asscalar(pose[1]), np.asscalar(pose[2]),
-                    #        np.asscalar(pose[3]), np.asscalar(pose[4]), np.asscalar(pose[5]),
-                    #        np.asscalar(pose[6])]
-                    #pose = [np.asscalar(tra[0]), np.asscalar(tra[1]), np.asscalar(tra[2]),
-                    #        np.asscalar(lie[0, 1]), np.asscalar(lie[0, 2]), np.asscalar(lie[1, 2])]
-                    #pose = [np.asscalar(lie[0, 3]), np.asscalar(lie[1, 3]), np.asscalar(lie[2, 3]),
-                    #        np.asscalar(lie[2, 1]), np.asscalar(lie[0, 2]), np.asscalar(lie[1, 0])]
-
-                    rot = tf3d.euler.mat2euler(R.reshape(3, 3))
-                    rot = np.asarray(rot, dtype=np.float32)
-                    pose = [np.asscalar(tra[0]), np.asscalar(tra[1]), np.asscalar(tra[2]),
-                            np.asscalar(rot[0]), np.asscalar(rot[1]), np.asscalar(rot[2])]
-                    camR_vis.append([np.asscalar(rot[0]), np.asscalar(rot[1]), np.asscalar(rot[2])])
-                    camT_vis.append(tra)
-
-                    pose[0:2] = toPix(pose[0:3])
-
-                    area = obj_bb[2] * obj_bb[3]
-
-                    nx1 = obj_bb[0]
-                    ny1 = obj_bb[1]
-                    nx2 = nx1 + obj_bb[2]
-                    ny2 = ny1 + obj_bb[3]
-                    npseg = np.array([nx1, ny1, nx2, ny1, nx2, ny2, nx1, ny2])
-                    cont = npseg.tolist()
-
-                    annoID = annoID + 1
-                    tempVa = {
-                        "id": annoID,
-                        "image_id": img_id,
-                        "category_id": obj_id,
-                        "bbox": obj_bb,
-                        "pose": pose,
-                        "segmentation": [cont],
-                        "area": area,
-                        "iscrowd": 0
-                    }
-                    dict["annotations"].append(tempVa)
-
-                # cnt = cnt.ravel()
-                # cont = cnt.tolist()
-
-                # depthName = '/home/sthalham/data/T-less_Detectron/linemodTest_HAA/train/' + imgNam
-                # rgbName = '/home/sthalham/data/T-less_Detectron/tlessC_all/val/' + imgNam
-                #cv2.imwrite(depthName, imgI)
-                # cv2.imwrite(rgbName, rgbImg)
-
-                #print("storing in test: ", imgNam)
-
-                # create dictionaries for json
-                tempVl = {
-                    "url": "cmp.felk.cvut.cz/t-less/",
-                    "id": img_id,
-                    "name": iname
-                }
-                dict["licenses"].append(tempVl)
-
-                tempVi = {
-                    "license": 2,
-                    "url": "cmp.felk.cvut.cz/t-less/",
-                    "file_name": iname,
-                    "height": rows,
-                    "width": cols,
-                    "date_captured": dateT,
-                    "id": img_id
-                }
-                dict["images"].append(tempVi)
-
-            elapsed_time = time.time() - start_time
-            times.append(elapsed_time)
-            meantime = sum(times) / len(times)
-            eta = ((allCo - gloCo) * meantime) / 60
-            if gloCo % 100 == 0:
-                print('eta: ', eta, ' min')
-                times = []
-
-            if visu is True:
-                img = cv2.imread(rgbImgPath)
-                #img = cv2.imread(fileName, cv2.IMREAD_UNCHANGED)
-                for i, bb in enumerate(bbox_vis):
-                    cv2.rectangle(img, (int(bb[0]), int(bb[1])), (int(bb[0]) + int(bb[2]), int(bb[1]) + int(bb[3])),
-                                  (255, 255, 255), 3)
-                    cv2.rectangle(img, (int(bb[0]), int(bb[1])), (int(bb[0]) + int(bb[2]), int(bb[1]) + int(bb[3])),
-                                  (0, 0, 0), 1)
-                    #
-                    font = cv2.FONT_HERSHEY_SIMPLEX
-                    bottomLeftCornerOfText = (int(bb[2]), int(bb[1]))
-                    fontScale = 1
-                    fontColor = (0, 0, 0)
-                    fontthickness = 1
-                    lineType = 2
-                    gtText = str(cat_vis[i])
-
-                    fontColor2 = (255, 255, 255)
-                    fontthickness2 = 3
-                    cv2.putText(img, gtText,
-                                bottomLeftCornerOfText,
-                                font,
-                                fontScale,
-                                fontColor2,
-                                fontthickness2,
-                                lineType)
-
-                    cv2.putText(img, gtText,
-                                bottomLeftCornerOfText,
-                                font,
-                                fontScale,
-                                fontColor,
-                                fontthickness,
-                                lineType)
-
-                    camR = camR_vis[i]
-                    camT = camT_vis[i]
-                    #t_lie = [[0.0, camR[0], camR[1]],
-                    #         [-camR[0], 0.0, camR[2]],
-                    #         [-camR[1], -camR[2], 0.0]]
-                    #t_lie = np.asarray(t_lie, dtype=np.float32)
-                    #t_eul = geometry.rotations.map_hat(t_lie)
-                    t_rot = tf3d.euler.euler2quat(camR[0], camR[1], camR[2])
-                    t_rot = np.asarray(t_rot, dtype=np.float32)
-                    draw_axis(img, cam_R=camR, cam_T=camT)
-
-                cv2.imwrite('/home/sthalham/visTests/testBB.jpg', img)
-
-                print('STOP')
-
-    if dataset == 'tless':
-        catsInt = range(1, 31)
-
-        for s in catsInt:
-            objName = str(s)
-            tempC = {
-                "id": s,
-                "name": objName,
-                "supercategory": "object"
-            }
-            dict["categories"].append(tempC)
-            dictVal["categories"].append(tempC)
-    elif dataset == 'linemod':
-        catsInt = range(1, 16)
-
-        for s in catsInt:
-            objName = str(s)
-            tempC = {
-                "id": s,
-                "name": objName,
-                "supercategory": "object"
-            }
-            dict["categories"].append(tempC)
-            dictVal["categories"].append(tempC)
-
-    valAnno = target + 'annotations/instances_val.json'
-    trainAnno = target + 'annotations/instances_test.json'
-
-    with open(valAnno, 'w') as fpV:
-        json.dump(dictVal, fpV)
-
-    with open(trainAnno, 'w') as fpT:
-        json.dump(dict, fpT)
+            else:
+                continue
 
     print('everythings done')
 

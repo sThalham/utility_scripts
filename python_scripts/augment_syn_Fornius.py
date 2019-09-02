@@ -35,28 +35,12 @@ fxkin = 579.68  # blender calculated
 fykin = 542.31  # blender calculated
 cxkin = 320
 cykin = 240
-depthCut = 2200
+depthCut = 2000
 
 np.set_printoptions(threshold=np.nan)
 
-threeD_boxes = np.ndarray((4, 8, 3), dtype=np.float32)
-threeD_boxes[0, :, :] = np.array([[0.05, 0.04, 0.03],  # AC-Abdeckung [81, 68, 25] expand last dim
-                                     [0.05, 0.04, -0.03],
-                                     [0.05, -0.04, -0.03],
-                                     [0.05, -0.04, 0.03],
-                                     [-0.05, 0.04, 0.03],
-                                     [-0.05, 0.04, -0.03],
-                                     [-0.05, -0.04, -0.03],
-                                     [-0.05, -0.04, 0.03]])
-threeD_boxes[1, :, :] = np.array([[0.05, 0.04, 0.03],  # Deckel [81, 72, 38]
-                                     [0.05, 0.04, -0.03],
-                                     [0.05, -0.04, -0.03],
-                                     [0.05, -0.04, 0.03],
-                                     [-0.05, 0.04, 0.03],
-                                     [-0.05, 0.04, -0.03],
-                                     [-0.05, -0.04, -0.03],
-                                     [-0.05, -0.04, 0.03]])
-threeD_boxes[2, :, :] = np.array([[0.060, 0.1, 0.03],  # Seite links [120, 198, 45]
+threeD_boxes = np.ndarray((8, 8, 3), dtype=np.float32)
+threeD_boxes[0, :, :] = np.array([[0.060, 0.1, 0.03],  # Seite-AC [120, 198, 45]
                                      [0.060, 0.1, -0.03],
                                      [0.060, -0.1, -0.03],
                                      [0.060, -0.1, 0.03],
@@ -64,7 +48,31 @@ threeD_boxes[2, :, :] = np.array([[0.060, 0.1, 0.03],  # Seite links [120, 198, 
                                      [-0.060, 0.1, -0.03],
                                      [-0.060, -0.1, -0.03],
                                      [-0.060, -0.1, 0.03]])
-threeD_boxes[3, :, :] = np.array([[0.060, 0.1, 0.03], # Seite links [120, 206, 56]
+threeD_boxes[1, :, :] = np.array([[0.05, 0.04, 0.03],  # AC-Abdeckung [81, 68, 25] expand last dim
+                                     [0.05, 0.04, -0.03],
+                                     [0.05, -0.04, -0.03],
+                                     [0.05, -0.04, 0.03],
+                                     [-0.05, 0.04, 0.03],
+                                     [-0.05, 0.04, -0.03],
+                                     [-0.05, -0.04, -0.03],
+                                     [-0.05, -0.04, 0.03]])
+threeD_boxes[2, :, :] = np.array([[0.05, 0.04, 0.03],  # DC [81, 72, 38]
+                                     [0.05, 0.04, -0.03],
+                                     [0.05, -0.04, -0.03],
+                                     [0.05, -0.04, 0.03],
+                                     [-0.05, 0.04, 0.03],
+                                     [-0.05, 0.04, -0.03],
+                                     [-0.05, -0.04, -0.03],
+                                     [-0.05, -0.04, 0.03]])
+threeD_boxes[3, :, :] = np.array([[0.145, 0.06, 0.03],  # Boden [290, 110, 50]
+                                     [0.145, 0.06, -0.03],
+                                     [0.145, -0.06, -0.03],
+                                     [0.145, -0.06, 0.03],
+                                     [-0.145, 0.06, 0.03],
+                                     [-0.145, 0.06, -0.03],
+                                     [-0.145, -0.06, -0.03],
+                                     [-0.145, -0.06, 0.03]])
+threeD_boxes[4, :, :] = np.array([[0.060, 0.1, 0.03], # Seite-DC [120, 206, 56]
                                   [0.060, 0.1, -0.03],
                                   [0.060, -0.1, -0.03],
                                   [0.060, -0.1, 0.03],
@@ -72,6 +80,30 @@ threeD_boxes[3, :, :] = np.array([[0.060, 0.1, 0.03], # Seite links [120, 206, 5
                                   [-0.060, 0.1, -0.03],
                                   [-0.060, -0.1, -0.03],
                                   [-0.060, -0.1, 0.03]])
+threeD_boxes[5, :, :] = np.array([[0.13, 0.09, 0.07], #Front  [260, 180, 140]
+                                  [0.13, 0.09, -0.07],
+                                  [0.13, -0.09, -0.07],
+                                  [0.13, -0.09, 0.07],
+                                  [-0.13, 0.09, 0.07],
+                                  [-0.13, 0.09, -0.07],
+                                  [-0.13, -0.09, -0.07],
+                                  [-0.13, -0.09, 0.07]])
+threeD_boxes[6, :, :] = np.array([[0.15, 0.085, 0.05], # Leistungsteil [300, 170, 100]
+                                  [0.15, 0.085, -0.05],
+                                  [0.15, -0.085, -0.05],
+                                  [0.15, -0.085, 0.05],
+                                  [-0.15, 0.085, 0.05],
+                                  [-0.15, 0.085, -0.05],
+                                  [-0.15, -0.085, -0.05],
+                                  [-0.15, -0.085, 0.05]])
+threeD_boxes[7, :, :] = np.array([[0.13, 0.09, 0.05], # Mantel [260, 180, 100]
+                                  [0.13, 0.09, -0.05],
+                                  [0.13, -0.09, -0.05],
+                                  [0.13, -0.09, 0.05],
+                                  [-0.13, 0.09, 0.05],
+                                  [-0.13, 0.09, -0.05],
+                                  [-0.13, -0.09, -0.05],
+                                  [-0.13, -0.09, 0.05]])
 
 
 def draw_axis(img, poses):
@@ -127,11 +159,13 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
         bboxes = np.zeros((len(query), 5), np.int)
         poses = np.zeros((len(query), 7), np.float32)
         mask_ids = np.zeros((len(query)), np.int)
+        visibilities = np.zeros((len(query)), np.float32)
         for j in range(len(query)-1): # skip cam pose
             qr = query[j]
             class_id = qr['class_id']
             bbox = qr['bbox']
             mask_ids[j] = int(qr['mask_id'])
+            visibilities[j] = float(qr['visibility'])
             pose = np.array(qr['pose']).reshape(4, 4)
             bboxes[j, 0] = class_id
             bboxes[j, 1:5] = np.array(bbox)
@@ -141,7 +175,7 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
 
     if bboxes.shape[0] < 2:
         print('invalid train image, no bboxes in fov')
-        return None, None, None, None, None
+        return None, None, None, None, None, None
 
     pt = Imath.PixelType(Imath.PixelType.FLOAT)
     golden = OpenEXR.InputFile(fn_depth)
@@ -165,11 +199,11 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
 
     if np.nanmean(depth) < 0.5 or np.nanmean(depth) > 2.0:
         print('invalid train image; range is wrong')
-        return None, None, None, None, None
+        return None, None, None, None, None, None
 
     partmask = cv2.imread(fn_part, 0)
 
-    return depth, partmask, bboxes, poses, mask_ids
+    return depth, partmask, bboxes, poses, mask_ids, visibilities
 
 
 def augmentDepth(depth, obj_mask, mask_ori, shadowClK, shadowMK, blurK, blurS, depthNoise, method):
@@ -248,7 +282,7 @@ def augmentDepth(depth, obj_mask, mask_ori, shadowClK, shadowMK, blurK, blurS, d
             noiseX = np.random.uniform(0.001, 0.01, resX * resY) # 0.0001 - 0.1
             noiseY = np.random.uniform(0.001, 0.01, resX * resY) # 0.0001 - 0.1
             noiseZ = np.random.uniform(0.01, 0.1, resX * resY) # 0.01 - 0.1
-            Wxy = np.random.randint(1, 6) # 0 - 10
+            Wxy = np.random.randint(1, 5) # 0 - 10
             Wz = np.random.uniform(0.0001, 0.004) #0 - 0.005
         # tless
         #noiseX = np.random.uniform(0.001, 0.1, resX * resY)  # 0.0001 - 0.1
@@ -259,9 +293,9 @@ def augmentDepth(depth, obj_mask, mask_ori, shadowClK, shadowMK, blurK, blurS, d
 
 
         X, Y = np.meshgrid(np.arange(resX), np.arange(resY))
-        coords0 = fns.emptyCoords(resX * resY)
-        coords1 = fns.emptyCoords(resX * resY)
-        coords2 = fns.emptyCoords(resX * resY)
+        coords0 = fns.empty_coords(resX * resY)
+        coords1 = fns.empty_coords(resX * resY)
+        coords2 = fns.empty_coords(resX * resY)
 
         coords0[0, :] = noiseX.ravel()
         coords0[1, :] = Y.ravel()
@@ -323,18 +357,18 @@ def get_normal(depth_refine, fx=-1, fy=-1, cx=-1, cy=-1, for_vis=True):
     res_x = depth_refine.shape[1]
 
     # inpainting
-    scaleOri = np.amax(depth_refine)
+    #scaleOri = np.amax(depth_refine)
 
-    inPaiMa = np.where(depth_refine == 0.0, 255, 0)
-    inPaiMa = inPaiMa.astype(np.uint8)
-    inPaiDia = 5.0
-    depth_refine = depth_refine.astype(np.float32)
-    depPaint = cv2.inpaint(depth_refine, inPaiMa, inPaiDia, cv2.INPAINT_NS)
+    #inPaiMa = np.where(depth_refine == 0.0, 255, 0)
+    #inPaiMa = inPaiMa.astype(np.uint8)
+    #inPaiDia = 5.0
+    #depth_refine = depth_refine.astype(np.float32)
+    #depPaint = cv2.inpaint(depth_refine, inPaiMa, inPaiDia, cv2.INPAINT_NS)
 
-    depNorm = depPaint - np.amin(depPaint)
-    rangeD = np.amax(depNorm)
-    depNorm = np.divide(depNorm, rangeD)
-    depth_refine = np.multiply(depNorm, scaleOri)
+    #depNorm = depPaint - np.amin(depPaint)
+    #rangeD = np.amax(depNorm)
+    #depNorm = np.divide(depNorm, rangeD)
+    #depth_refine = np.multiply(depNorm, scaleOri)
 
     depth_imp = copy.deepcopy(depth_refine)
 
@@ -400,12 +434,13 @@ def get_normal(depth_refine, fx=-1, fy=-1, cx=-1, cy=-1, for_vis=True):
 if __name__ == "__main__":
 
     #root = '/home/sthalham/data/renderings/linemod_BG/patches31052018/patches'  # path to train samples
-    root = '/home/sthalham/data/renderings/fronius/patches'
-    target = '/home/sthalham/data/prepro/fronius/'
+    root = '/home/sthalham/data/renderings/fronius_22/patches/'
+    root2 = '/home/sthalham/data/renderings/fronius_22_2/patches/'
+    target = '/home/sthalham/data/prepro/fronius_M24_new/'
     # [depth, normals, sensor, simplex, full]
     method = 'full'
     visu = False
-    n_samples = 30000 # real=1214
+    n_samples = 20000 # real=1214
 
     now = datetime.datetime.now()
     dateT = str(now)
@@ -442,10 +477,9 @@ if __name__ == "__main__":
     excludedImgs = []
 
     syns = os.listdir(root)
-    #walkit = random.sample(syns, n_samples)
+    syns2 = os.listdir(root2)
     for fileInd in syns:
-        if fileInd.endswith(".yaml") and len(os.listdir(target + 'images/train')) < n_samples:
-        #if fileInd.endswith(".yaml"):
+        if fileInd.endswith(".yaml"):
 
             start_time = time.time()
             gloCo = gloCo + 1
@@ -457,7 +491,7 @@ if __name__ == "__main__":
             partfile = partPath + redname + "_part.png"
             maskfile = maskPath + redname + "_mask.npy"
 
-            depth_refine, mask, bboxes, poses, mask_ids = manipulate_depth(gtfile, depfile, partfile)
+            depth_refine, mask, bboxes, poses, mask_ids, visibilities = manipulate_depth(gtfile, depfile, partfile)
             obj_mask = np.load(maskfile)
             obj_mask = obj_mask.astype(np.int8)
 
@@ -519,7 +553,7 @@ if __name__ == "__main__":
                         kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
                         kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
                         kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                        sBlur = random.uniform(0.25, 3.5)
+                        sBlur = random.uniform(0.25, 2.5)
                         sDep = random.uniform(0.002, 0.004)
                         kShadow.astype(int)
                         kMed.astype(int)
@@ -532,15 +566,15 @@ if __name__ == "__main__":
                         depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep,
                                             augmentation_var)
 
-                        depth2store = copy.deepcopy(depthAug)
-                        depth2store[depthAug > depthCut] = 0
-                        scaCro = 255.0 / np.nanmax(depth2store)
-                        cross = np.multiply(depth2store, scaCro)
+                        depthAug[depthAug > depthCut] = 0
+                        scaCro = 255.0 / np.nanmax(depthAug)
+                        cross = np.multiply(depthAug, scaCro)
                         dep_sca = cross.astype(np.uint8)
-                        aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
-                                                         for_vis=False)
-                        #aug_xyz[:,:,2] = dep_sca
                         cv2.imwrite(fileName, dep_sca)
+
+                        #aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+                        #                                 for_vis=False)
+                        #dep_sca = aug_xyz
                         #cv2.imwrite(fileName, aug_xyz)
 
                 imgID = int(newredname)
@@ -548,15 +582,23 @@ if __name__ == "__main__":
 
                 # bb scaling because of image scaling
                 bbsca = 1.0
-                if dataset is 'tless':
-                    bbsca = 720.0 / 640.0
-                bbvis = (bboxes * bbsca).astype(int)
-                bbvis = bbvis.astype(int)
+                #if dataset is 'tless':
+                #    bbsca = 720.0 / 640.0
+                #bbvis = (bboxes * bbsca).astype(int)
+                #bbvis = bbvis.astype(int)
+                bbvis = []
                 bb3vis = []
                 cats = []
                 posvis = []
                 postra = []
                 for i, bbox in enumerate(bboxes[:-1]):
+
+                    #print(visibilities[i])
+                    if visibilities[i] < 0.7:
+                        print('visivility: ', visibilities[i], ' skip!')
+                        continue
+
+                    bbvis.append(bbox.astype(int))
                     objID = np.asscalar(bbox[0]) + 1
                     cats.append(objID)
                     bbox = (bbox * bbsca).astype(int)
@@ -568,13 +610,10 @@ if __name__ == "__main__":
                     tDbox = tDbox + np.repeat(poses[i, np.newaxis, 0:3], 8, axis=0)
 
                     box3D = toPix_array(tDbox)
-
                     box3D = np.reshape(box3D, (16))
-                    if len(box3D[box3D < 0]) > 0 or len(box3D[0::2][box3D[0::2] > 639]) > 0 or len(box3D[1::2][box3D[1::2] > 479]) > 0:
-                        continue
-
                     box3D = box3D.tolist()
                     bb3vis.append(box3D)
+
                     #print('pose: ', poses[i, 0:3], 'points: ', tDbox)
 
                     bbox = bbox.astype(int)
@@ -647,6 +686,7 @@ if __name__ == "__main__":
 
                 if visu is True:
                     #img = cv2.imread(fileName, cv2.IMREAD_UNCHANGED)
+                    aug_xyz = dep_sca
                     for i, bb in enumerate(bbvis[:-1]):
 
                         #cv2.rectangle(aug_xyz, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
@@ -681,11 +721,9 @@ if __name__ == "__main__":
                                 lineType)
 
                         #print(posvis[i])
-                        if i is not poses.shape[0]-1:
-                            pose2D = posvis[i]
-                            print(str(cats[i]))
+                        if i is not len(bb3vis)+1:
+                            #pose2D = posvis[i]
                             pose = np.asarray(bb3vis[i], dtype=np.float32)
-                            print(pose)
                             colR = 249
                             colG = 119
                             colB = 25
@@ -714,13 +752,13 @@ if __name__ == "__main__":
                             #map = geometry.rotations.map_hat(ssm)
                             #quat = tf3d.euler.euler2quat(pose2D[3], pose2D[4], pose2D[5])
                             #quat = quat / np.linalg.norm(quat)
-                            pose2D = np.concatenate([postra[i], pose2D[3:]])
+                            #pose2D = np.concatenate([postra[i], pose2D[3:]])
                             #print('x: ', (pose[0]-bb[2])/(bb[4]-bb[2]))
                             #print('y: ', (pose[1] - bb[1]) / (bb[3] - bb[1]))
                             #print(pose[0:2], bb[1:])
 
                             #cv2.circle(img, (int(pose[0]), int(pose[1])), 5, (0, 255, 0), 3)
-                            draw_axis(aug_xyz, pose2D)
+                            #draw_axis(aug_xyz, pose2D)
 
                             img = aug_xyz
                             img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 3)
@@ -750,14 +788,224 @@ if __name__ == "__main__":
                                        (colR4, colG4, colB4),
                                        3)
 
-                    cv2.imwrite('/home/sthalham/visTests/fronius.jpg', img)
+                        cv2.imwrite(fileName, img)
 
                     print('STOP')
 
-    if dataset is 'linemod':
-        catsInt = range(1,16)
-    else:
-        catsInt = range(1, 31)
+    depPath = root2 + "/depth/"
+    partPath = root2 + "/part/"
+    gtPath = root2
+    maskPath = root2 + "/mask/"
+
+    # since 2 folders
+    for fileInd in syns2:
+        if fileInd.endswith(".yaml"):
+
+            start_time = time.time()
+            gloCo = gloCo + 1
+
+            redname = fileInd[:-8]
+
+            gtfile = gtPath + '/' + fileInd
+            depfile = depPath + redname + "_depth.exr"
+            partfile = partPath + redname + "_part.png"
+            maskfile = maskPath + redname + "_mask.npy"
+
+            depth_refine, mask, bboxes, poses, mask_ids, visibilities = manipulate_depth(gtfile, depfile, partfile)
+            obj_mask = np.load(maskfile)
+            obj_mask = obj_mask.astype(np.int8)
+
+            if bboxes is None:
+                excludedImgs.append(int(redname))
+                continue
+
+            depth_refine = np.multiply(depth_refine, 1000.0)  # to millimeters
+            rows, cols = depth_refine.shape
+
+            for k in range(0, 2):
+
+                newredname = str(2) + redname[1:] + str(k)
+
+                fileName = target + "images/train/" + newredname + '.jpg'
+                myFile = Path(fileName)
+
+                if myFile.exists():
+                    print('File exists, skip encoding and safing.')
+
+                else:
+                    if method == 'normals':
+                        normals, depth_refine_aug, depth_imp = get_normal(depth_refine, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+                                                           for_vis=False)
+
+                    elif method == 'simplex':
+                        drawKern = [3, 5, 7]
+                        freqKern = np.bincount(drawKern)
+                        kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        sBlur = random.uniform(0.25, 3.5)
+                        sDep = random.uniform(0.002, 0.004)
+                        kShadow.astype(int)
+                        kMed.astype(int)
+                        kBlur.astype(int)
+                        kShadow = kShadow[0]
+                        kMed = kMed[0]
+                        kBlur = kBlur[0]
+                        augmentation_var = 2  # [0 = full, 1 = sensor, 2 = simplex]
+                        depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep, augmentation_var)
+
+                        aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+                                                         for_vis=False)
+
+                        #depth_imp[depth_imp > depthCut] = 0
+                        #scaCro = 255.0 / np.nanmax(depth_imp)
+                        #cross = np.multiply(depth_imp, scaCro)
+                        depthAug[depthAug > depthCut] = 0
+                        scaCro = 255.0 / np.nanmax(depthAug)
+                        cross = np.multiply(depthAug, scaCro)
+                        dep_sca = cross.astype(np.uint8)
+                        cv2.imwrite(fileName, dep_sca)
+                        #cv2.imwrite(fileName, aug_xyz)
+
+                    elif method == 'full':
+                        drawKern = [3, 5, 7]
+                        freqKern = np.bincount(drawKern)
+                        kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        sBlur = random.uniform(0.25, 2.5)
+                        sDep = random.uniform(0.002, 0.004)
+                        kShadow.astype(int)
+                        kMed.astype(int)
+                        kBlur.astype(int)
+                        kShadow = kShadow[0]
+                        kMed = kMed[0]
+                        kBlur = kBlur[0]
+                        augmentation_var = 0  # [0 = full, 1 = sensor, 2 = simplex]
+
+                        depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep,
+                                            augmentation_var)
+
+                        depthAug[depthAug > depthCut] = 0
+                        scaCro = 255.0 / np.nanmax(depthAug)
+                        cross = np.multiply(depthAug, scaCro)
+                        dep_sca = cross.astype(np.uint8)
+                        cv2.imwrite(fileName, dep_sca)
+
+                        #aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+                        #                                 for_vis=False)
+                        #dep_sca = aug_xyz
+                        #cv2.imwrite(fileName, aug_xyz)
+
+                imgID = int(newredname)
+                imgName = newredname + '.jpg'
+
+                # bb scaling because of image scaling
+                bbsca = 1.0
+                #if dataset is 'tless':
+                #    bbsca = 720.0 / 640.0
+                #bbvis = (bboxes * bbsca).astype(int)
+                #bbvis = bbvis.astype(int)
+                bbvis = []
+                bb3vis = []
+                cats = []
+                posvis = []
+                postra = []
+                for i, bbox in enumerate(bboxes[:-1]):
+
+                    #print(visibilities[i])
+                    if visibilities[i] < 0.7:
+                        print('visivility: ', visibilities[i], ' skip!')
+                        continue
+
+                    bbvis.append(bbox.astype(int))
+                    objID = np.asscalar(bbox[0]) + 1
+                    cats.append(objID)
+                    bbox = (bbox * bbsca).astype(int)
+
+                    rot = tf3d.quaternions.quat2mat(poses[i, 3:])
+                    rot = np.asarray(rot, dtype=np.float32)
+
+                    tDbox = rot.dot(threeD_boxes[bbox[0], :, :].T).T
+                    tDbox = tDbox + np.repeat(poses[i, np.newaxis, 0:3], 8, axis=0)
+
+                    box3D = toPix_array(tDbox)
+                    box3D = np.reshape(box3D, (16))
+                    box3D = box3D.tolist()
+                    bb3vis.append(box3D)
+
+                    #print('pose: ', poses[i, 0:3], 'points: ', tDbox)
+
+                    bbox = bbox.astype(int)
+                    x1 = np.asscalar(bbox[2])
+                    y1 = np.asscalar(bbox[1])
+                    x2 = np.asscalar(bbox[4])
+                    y2 = np.asscalar(bbox[3])
+                    nx1 = bbox[2]
+                    ny1 = bbox[1]
+                    nx2 = bbox[4]
+                    ny2 = bbox[3]
+                    w = (x2 - x1)
+                    h = (y2 - y1)
+                    bb = [x1, y1, w, h]
+                    area = w * h
+                    npseg = np.array([nx1, ny1, nx2, ny1, nx2, ny2, nx1, ny2])
+                    seg = npseg.tolist()
+
+                    pose = [np.asscalar(poses[i, 0]), np.asscalar(poses[i, 1]), np.asscalar(poses[i, 2]),
+                                np.asscalar(poses[i,3]), np.asscalar(poses[i,4]), np.asscalar(poses[i,5]),
+                                np.asscalar(poses[i,6])]
+                    if i != len(bboxes):
+                        pose[0:2] = toPix(pose[0:3])
+
+                    posvis.append(pose)
+                    tra = np.asarray(poses[i, :3], dtype=np.float32)
+                    postra.append(tra)
+
+                    annoID = annoID + 1
+                    tempTA = {
+                        "id": annoID,
+                        "image_id": imgID,
+                        "category_id": objID,
+                        "bbox": bb,
+                        "pose": pose,
+                        "segmentation": box3D,
+                        "area": area,
+                        "iscrowd": 0
+                    }
+
+                    dict["annotations"].append(tempTA)
+
+                tempTL = {
+                    "url": "cmp.felk.cvut.cz/t-less/",
+                    "id": imgID,
+                    "name": imgName
+                }
+                dict["licenses"].append(tempTL)
+
+                tempTV = {
+                    "license": 2,
+                    "url": "cmp.felk.cvut.cz/t-less/",
+                    "file_name": imgName,
+                    "height": resY,
+                    "width": resX,
+                    "date_captured": dateT,
+                    "id": imgID
+                }
+                dict["images"].append(tempTV)
+
+                gloCo += 1
+
+                elapsed_time = time.time() - start_time
+                times.append(elapsed_time)
+                meantime = sum(times)/len(times)
+                eta = ((all - gloCo) * meantime) / 60
+                if gloCo % 100 == 0:
+                    print('eta: ', eta, ' min')
+                    times = []
+
+
+    catsInt = range(1,9)
 
     for s in catsInt:
         objName = str(s)
