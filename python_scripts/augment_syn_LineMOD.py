@@ -36,7 +36,7 @@ depthCut = 2000
 
 
 
-np.set_printoptions(threshold=np.nan)
+#np.set_printoptions(threshold=np.nan)
 
 threeD_boxes = np.ndarray((15, 8, 3), dtype=np.float32)
 threeD_boxes[0, :, :] = np.array([[0.038, 0.039, 0.046],  # ape [76, 78, 92]
@@ -262,10 +262,10 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
 
     partmask = cv2.imread(fn_part, 0)
 
-    #print('partmask: ', np.nanmean(partmask))
-    #if np.nanmean(partmask) < 150.0:
-    #    print('invalid visibility mask!')
-    #    return None, None, None, None, None, None
+    print('partmask: ', np.nanmean(partmask))
+    if np.nanmean(partmask) < 150.0:
+        print('invalid visibility mask!')
+        return None, None, None, None, None, None
 
     return depth, partmask, bboxes, poses, mask_ids, visibilities
 
@@ -500,8 +500,8 @@ def get_normal(depth_refine, fx=-1, fy=-1, cx=-1, cy=-1, for_vis=True):
 if __name__ == "__main__":
 
     #root = '/home/sthalham/data/renderings/linemod_BG/patches31052018/patches'  # path to train samples
-    root = '/home/sthalham/data/renderings/linemod_rgbd/patches'
-    target = '/home/sthalham/data/prepro/linemod_depth_rgbd_double/'
+    root = '/home/stefan/data/rendered_data/linemod/patches'
+    target = '/home/stefan/data/train_data/linemod_depth_vis07/'
     # [depth, normals, sensor, simplex, full]
     method = 'full'
     visu = False
@@ -686,7 +686,7 @@ if __name__ == "__main__":
                     #if (np.asscalar(bbox[0]) + 1) != wanna_cls:
                     #    continue
 
-                    if visibilities[i] < 0.5:
+                    if visibilities[i] < 0.7:
                         print('visivility: ', visibilities[i], ' skip!')
                         continue
 

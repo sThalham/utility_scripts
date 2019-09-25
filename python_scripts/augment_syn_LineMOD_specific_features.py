@@ -15,8 +15,6 @@ import itertools
 import random
 import pyfastnoisesimd as fns
 import geometry
-import imgaug.augmenters as iaa
-from sklearn.decomposition import PCA
 
 import OpenEXR, Imath
 from pathlib import Path
@@ -41,126 +39,126 @@ depthCut = 2000
 #np.set_printoptions(threshold=np.nan)
 
 threeD_boxes = np.ndarray((15, 8, 3), dtype=np.float32)
-threeD_boxes[0, :, :] = np.array([[0.038, 0.039, 0.046],  # ape [76, 78, 92]
-                                     [0.038, 0.039, -0.046],
-                                     [0.038, -0.039, -0.046],
-                                     [0.038, -0.039, 0.046],
-                                     [-0.038, 0.039, 0.046],
-                                     [-0.038, 0.039, -0.046],
-                                     [-0.038, -0.039, -0.046],
-                                     [-0.038, -0.039, 0.046]])
-threeD_boxes[1, :, :] = np.array([[0.108, 0.061, 0.1095],  # benchvise [216, 122, 219]
-                                     [0.108, 0.061, -0.1095],
-                                     [0.108, -0.061, -0.1095],
-                                     [0.108, -0.061, 0.1095],
-                                     [-0.108, 0.061, 0.1095],
-                                     [-0.108, 0.061, -0.1095],
-                                     [-0.108, -0.061, -0.1095],
-                                     [-0.108, -0.061, 0.1095]])
-#threeD_boxes[2, :, :] = np.array([[0.083, 0.0825, 0.037],  # bowl [166, 165, 74]
-#                                     [0.083, 0.0825, -0.037],
-#                                     [0.083, -0.0825, -0.037],
-#                                     [0.083, -0.0825, 0.037],
-#                                     [-0.083, 0.0825, 0.037],
-#                                     [-0.083, 0.0825, -0.037],
-#                                     [-0.083, -0.0825, -0.037],
-#                                     [-0.083, -0.0825, 0.037]])
-threeD_boxes[2, :, :] = np.array([[0.0685, 0.0715, 0.05],  # camera [137, 143, 100]
-                                     [0.0685, 0.0715, -0.05],
-                                     [0.0685, -0.0715, -0.05],
-                                     [0.0685, -0.0715, 0.05],
-                                     [-0.0685, 0.0715, 0.05],
-                                     [-0.0685, 0.0715, -0.05],
-                                     [-0.0685, -0.0715, -0.05],
-                                     [-0.0685, -0.0715, 0.05]])
-threeD_boxes[3, :, :] = np.array([[0.0505, 0.091, 0.097],  # can [101, 182, 194]
-                                     [0.0505, 0.091, -0.097],
-                                     [0.0505, -0.091, -0.097],
-                                     [0.0505, -0.091, 0.097],
-                                     [-0.0505, 0.091, 0.097],
-                                     [-0.0505, 0.091, -0.097],
-                                     [-0.0505, -0.091, -0.097],
-                                     [-0.0505, -0.091, 0.097]])
-threeD_boxes[4, :, :] = np.array([[0.0335, 0.064, 0.0585],  # cat [67, 128, 117]
-                                     [0.0335, 0.064, -0.0585],
-                                     [0.0335, -0.064, -0.0585],
-                                     [0.0335, -0.064, 0.0585],
-                                     [-0.0335, 0.064, 0.0585],
-                                     [-0.0335, 0.064, -0.0585],
-                                     [-0.0335, -0.064, -0.0585],
-                                     [-0.0335, -0.064, 0.0585]])
-#threeD_boxes[6, :, :] = np.array([[0.059, 0.046, 0.0475],  # mug [118, 92, 95]
-#                                     [0.059, 0.046, -0.0475],
-#                                     [0.059, -0.046, -0.0475],
-#                                     [0.059, -0.046, 0.0475],
-#                                     [-0.059, 0.046, 0.0475],
-#                                     [-0.059, 0.046, -0.0475],
-#                                     [-0.059, -0.046, -0.0475],
-#                                     [-0.059, -0.046, 0.0475]])
-threeD_boxes[5, :, :] = np.array([[0.115, 0.038, 0.104],  # drill [230, 76, 208]
-                                     [0.115, 0.038, -0.104],
-                                     [0.115, -0.038, -0.104],
-                                     [0.115, -0.038, 0.104],
-                                     [-0.115, 0.038, 0.104],
-                                     [-0.115, 0.038, -0.104],
-                                     [-0.115, -0.038, -0.104],
-                                     [-0.115, -0.038, 0.104]])
-threeD_boxes[6, :, :] = np.array([[0.052, 0.0385, 0.043],  # duck [104, 77, 86]
-                                     [0.052, 0.0385, -0.043],
-                                     [0.052, -0.0385, -0.043],
-                                     [0.052, -0.0385, 0.043],
-                                     [-0.052, 0.0385, 0.043],
-                                     [-0.052, 0.0385, -0.043],
-                                     [-0.052, -0.0385, -0.043],
-                                     [-0.052, -0.0385, 0.043]])
-threeD_boxes[7, :, :] = np.array([[0.075, 0.0535, 0.0345],  # eggbox [150, 107, 69]
-                                     [0.075, 0.0535, -0.0345],
-                                     [0.075, -0.0535, -0.0345],
-                                     [0.075, -0.0535, 0.0345],
-                                     [-0.075, 0.0535, 0.0345],
-                                     [-0.075, 0.0535, -0.0345],
-                                     [-0.075, -0.0535, -0.0345],
-                                     [-0.075, -0.0535, 0.0345]])
-threeD_boxes[8, :, :] = np.array([[0.0185, 0.039, 0.0865],  # glue [37, 78, 173]
-                                     [0.0185, 0.039, -0.0865],
-                                     [0.0185, -0.039, -0.0865],
-                                     [0.0185, -0.039, 0.0865],
-                                     [-0.0185, 0.039, 0.0865],
-                                     [-0.0185, 0.039, -0.0865],
-                                     [-0.0185, -0.039, -0.0865],
-                                     [-0.0185, -0.039, 0.0865]])
-threeD_boxes[9, :, :] = np.array([[0.0505, 0.054, 0.04505],  # holepuncher [101, 108, 91]
-                                     [0.0505, 0.054, -0.04505],
-                                     [0.0505, -0.054, -0.04505],
-                                     [0.0505, -0.054, 0.04505],
-                                     [-0.0505, 0.054, 0.04505],
-                                     [-0.0505, 0.054, -0.04505],
-                                     [-0.0505, -0.054, -0.04505],
-                                     [-0.0505, -0.054, 0.04505]])
-threeD_boxes[10, :, :] = np.array([[0.115, 0.038, 0.104],  # drill [230, 76, 208]
-                                     [0.115, 0.038, -0.104],
-                                     [0.115, -0.038, -0.104],
-                                     [0.115, -0.038, 0.104],
-                                     [-0.115, 0.038, 0.104],
-                                     [-0.115, 0.038, -0.104],
-                                     [-0.115, -0.038, -0.104],
-                                     [-0.115, -0.038, 0.104]])
-threeD_boxes[11, :, :] = np.array([[0.129, 0.059, 0.0705],  # iron [258, 118, 141]
-                                     [0.129, 0.059, -0.0705],
-                                     [0.129, -0.059, -0.0705],
-                                     [0.129, -0.059, 0.0705],
-                                     [-0.129, 0.059, 0.0705],
-                                     [-0.129, 0.059, -0.0705],
-                                     [-0.129, -0.059, -0.0705],
-                                     [-0.129, -0.059, 0.0705]])
-threeD_boxes[12, :, :] = np.array([[0.047, 0.0735, 0.0925],  # phone [94, 147, 185]
-                                     [0.047, 0.0735, -0.0925],
-                                     [0.047, -0.0735, -0.0925],
-                                     [0.047, -0.0735, 0.0925],
-                                     [-0.047, 0.0735, 0.0925],
-                                     [-0.047, 0.0735, -0.0925],
-                                     [-0.047, -0.0735, -0.0925],
-                                     [-0.047, -0.0735, 0.0925]])
+threeD_boxes[0, :, :] = np.array([[-0.0088, -0.0277, -0.01747],  # ape [76, 78, 92]
+                                     [-0.0175, 0.012, -0.0168],
+                                     [0.005, 0.0188, -0.0161],
+                                     [0.0256, 0.0035, -0.0302],
+                                     [0.0285, -0.0245, -0.0061],
+                                     [0.0097, 0.0209, 0.0184],
+                                     [0.0171, -0.0005, 0.0278],
+                                     [-0.0363, -0.0096, -0.0159]])
+threeD_boxes[1, :, :] = np.array([[0.1055, 0.0002, -0.086],  # benchvise [216, 122, 219]
+                                     [-0.0471, -0.0305, -0.0908],
+                                     [-0.1045, -0.0012, -0.0205],
+                                     [-0.0481, 0.028, -0.0928],
+                                     [-0.0191, 0.0, 0.0017],
+                                     [0.0482, 0.0353, -0.0177],
+                                     [0.0474, -0.0339, -0.0173],
+                                     [0.0613, 0.0014, 0.1084]])
+threeD_boxes[2, :, :] = np.array([[0.083, 0.0825, 0.037],  # bowl [166, 165, 74]
+                                     [0.083, 0.0825, -0.037],
+                                     [0.083, -0.0825, -0.037],
+                                     [0.083, -0.0825, 0.037],
+                                     [-0.083, 0.0825, 0.037],
+                                     [-0.083, 0.0825, -0.037],
+                                     [-0.083, -0.0825, -0.037],
+                                     [-0.083, -0.0825, 0.037]])
+threeD_boxes[3, :, :] = np.array([[0.0681, 0.0168, -0.01],  # camera [137, 143, 100]
+                                     [-0.011, 0.0612, -0.0094],
+                                     [-0.0641, 0.019, 0.0246],
+                                     [-0.0661, -0.0226, -0.0216],
+                                     [-0.0619, -0.0657, 0.0181],
+                                     [-0.0018, -0.0459, 0.0264],
+                                     [0.0104, 0.0174, 0.0411],
+                                     [-0.048, 0.018, 0.0479]])
+threeD_boxes[4, :, :] = np.array([[-0.0072, -0.083, 0.0162],  # can [101, 182, 194]
+                                     [0.0482, 0.0065, 0.0203],
+                                     [0.0047, 0.0681, -0.0662],
+                                     [-0.0473, 0.0095, 0.0197],
+                                     [0.0074, 0.0778, 0.0087],
+                                     [0.0009, 0.0107, 0.0968],
+                                     [-0.0039, -0.0417, -0.0649],
+                                     [0.0, 0.0, 0.0]])
+threeD_boxes[5, :, :] = np.array([[0.0019, -0.0564, 0.0248],  # cat [67, 128, 117]
+                                     [-0.0222, 0.0627, 0.0263],
+                                     [0.0128, 0.0121, 0.0585],
+                                     [0.0317, 0.0315, -0.0002],
+                                     [-0.0197, 0.0318, -0.0475],
+                                     [0.022, 0.0322, -0.0484],
+                                     [-0.0256, -0.0588, -0.0439],
+                                     [0.0204, -0.0623, -0.0431]])
+threeD_boxes[6, :, :] = np.array([[0.059, 0.046, 0.0475],  # mug [118, 92, 95]
+                                     [0.059, 0.046, -0.0475],
+                                     [0.059, -0.046, -0.0475],
+                                     [0.059, -0.046, 0.0475],
+                                    [-0.059, 0.046, 0.0475],
+                                    [-0.059, 0.046, -0.0475],
+                                     [-0.059, -0.046, -0.0475],
+                                     [-0.059, -0.046, 0.0475]])
+threeD_boxes[7, :, :] = np.array([[-0.1146, -0.0005, 0.04],  # drill [118, 92, 95]
+                                     [-0.0599, 0.0007, -0.0885],
+                                     [0.0302, 0.0017, -0.0842],
+                                     [0.1145, -0.0027, 0.0889],
+                                    [0.018, 0.0004, 0.0033],
+                                    [-0.0354, -0.0026, 0.0895],
+                                     [0.0049, -0.031, 0.035],
+                                     [0.0037, 0.0214, 0.0346]])
+threeD_boxes[8, :, :] = np.array([[0.0439, 0.0009, 0.0227],  # duck [104, 77, 86]
+                                     [-0.0155, -0.0012, 0.0364],
+                                     [-0.0425, -0.0014, 0.0012],
+                                     [-0.0077, -0.0363, -0.0207],
+                                     [0.025, 0.0011, 0.0346],
+                                     [0.0514, 0.0021, -0.0264],
+                                     [-0.0078, 0.037, -0.0222],
+                                     [-0.0087, 0.0001, -0.0009]])
+threeD_boxes[9, :, :] = np.array([[0.0018, -0.0513, 0.0172],  # eggbox [150, 107, 69]
+                                     [0.049, -0.0011, 0.0331],
+                                     [-0.0668, 0.0465, 0.0052],
+                                     [-0.0694, -0.039, -0.0023],
+                                     [0.0692, -0.0419, -0.0007],
+                                     [0.0685, 0.0416, 0.0054],
+                                     [0.001, 0.0528, 0.0052],
+                                     [-0.0466, 0.002, 0.0331]])
+threeD_boxes[10, :, :] = np.array([[0.0004, 0.0025, 0.0863],  # glue [37, 78, 173]
+                                     [-0.0012, 0.0132, 0.053],
+                                     [0.0133, -0.021, 0.0197],
+                                     [-0.0146, -0.0209, 0.0201],
+                                     [0.0114, -0.0365, -0.0509],
+                                     [0.0155, 0.0347, -0.0549],
+                                     [-0.0151, 0.0354, -0.0544],
+                                     [-0.0146, -0.0351, -0.0546]])
+threeD_boxes[11, :, :] = np.array([[-0.0376, 0.0457, -0.0349],  # holepuncher [101, 108, 91]
+                                     [-0.0344, -0.0465, -0.0342],
+                                     [0.024, -0.0405, -0.0257],
+                                     [0.024, 0.0444, -0.0264],
+                                     [0.0388, 0.048, 0.037],
+                                     [0.0376, -0.0437, 0.0376],
+                                     [-0.0019, 0.001, 0.0262],
+                                     [-0.0477, 0.0024, -0.0005]])
+threeD_boxes[12, :, :] = np.array([[-0.1127, -0.0005, 0.0691],  # drill [230, 76, 208]
+                                     [-0.1291, -0.039, -0.0372],
+                                     [-0.1275, 0.0434, -0.0373],
+                                     [-0.0052, -0.0023, 0.0104],
+                                     [0.0777, -0.0021, 0.042],
+                                     [0.1269, -0.0021, -0.0554],
+                                     [0.0533, -0.0425, -0.0443],
+                                     [0.0453, 0.0417, -0.0419]])
+threeD_boxes[13, :, :] = np.array([[-0.0694, 0.0013, 0.0809],  # iron [258, 118, 141]
+                                     [0.0098, 0.0318, 0.0053],
+                                     [0.0099, -0.0244, 0.0032],
+                                     [0.0639, -0.0482, 0.0774],
+                                     [0.0647, 0.0465, 0.0789],
+                                     [0.0143, 0.0512, -0.0846],
+                                     [0.0154, -0.0413, -0.089],
+                                     [-0.0356, 0.0046, -0.0876]])
+threeD_boxes[14, :, :] = np.array([[0.0272, 0.0281, -0.0477],  # phone [94, 147, 185]
+                                     [0.0243, -0.0393, -0.0492],
+                                     [0.0023, -0.037, 0.0394],
+                                     [-0.0393, 0.0177, -0.0239],
+                                     [-0.0374, 0.0540, -0.0816],
+                                     [-0.0444, -0.047, -0.0839],
+                                     [-0.0233, -0.0676, -0.0173],
+                                     [-0.0236, 0.0656, -0.0139]])
 
 
 def draw_axis(img, poses):
@@ -215,7 +213,7 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
         query = yaml.load(stream)
         if query is None:
             print('Whatever is wrong there.... ¯\_(ツ)_/¯')
-            return None, None, None, None, None
+            return None, None, None, None, None, None
         bboxes = np.zeros((len(query), 5), np.int)
         poses = np.zeros((len(query), 7), np.float32)
         mask_ids = np.zeros((len(query)), np.int)
@@ -235,7 +233,7 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
 
     if bboxes.shape[0] < 2:
         print('invalid train image, no bboxes in fov')
-        return None, None, None, None, None
+        return None, None, None, None, None, None
 
     pt = Imath.PixelType(Imath.PixelType.FLOAT)
     golden = OpenEXR.InputFile(fn_depth)
@@ -260,16 +258,15 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
     #print('depth: ', np.nanmean(depth))
     if np.nanmean(depth) < 0.5 or np.nanmean(depth) > 4.0:
         print('invalid train image; range is wrong')
-        return None, None, None, None, None
+        return None, None, None, None, None, None
 
-    #partmask = cv2.imread(fn_part, 0)
+    partmask = cv2.imread(fn_part, 0)
 
-    #print('partmask: ', np.nanmean(partmask))
-    #if np.nanmean(partmask) < 150.0:
-    #    print('invalid visibility mask!')
-    #    return None, None, None, None, None, None
+    if np.nanmean(partmask) < 150.0:
+        print('invalid visibility mask!')
+        return None, None, None, None, None, None
 
-    return depth, bboxes, poses, mask_ids, visibilities
+    return depth, partmask, bboxes, poses, mask_ids, visibilities
 
 
 def augmentDepth(depth, obj_mask, mask_ori, shadowClK, shadowMK, blurK, blurS, depthNoise, method):
@@ -289,8 +286,10 @@ def augmentDepth(depth, obj_mask, mask_ori, shadowClK, shadowMK, blurK, blurS, d
     # erode and blur mask to get more realistic appearance
     partmask = mask_ori
     partmask = partmask.astype(np.float32)
-    mask = partmask > (np.median(partmask) * 0.4)
-    partmask = np.where(mask, 255.0, 0.0)
+    #mask = partmask > (np.median(partmask) * 0.4)
+    partmask = np.where(partmask > 0.0, 255.0, 0.0)
+
+    cv2.imwrite('/home/sthalham/partmask.png', partmask)
 
     # apply shadow
     kernel = np.ones((shadowClK, shadowClK))
@@ -418,175 +417,6 @@ def augmentDepth(depth, obj_mask, mask_ori, shadowClK, shadowMK, blurK, blurS, d
     return depth
 
 
-def augmentRGB(rgb):
-    # alpha == simple contrast control
-    alpha = 0.5
-    # beta == simple brightness control
-    beta = 25
-    # gamma == color perturbation in percent/100
-    gamma = 0.05
-
-    gain_ill = 100.0
-
-    new_rgb = copy.deepcopy(rgb)
-
-    draw = np.random.randint(0, 1)
-    if draw == 0:
-        # brightness and contrast
-        alpha_r = np.random.uniform(1.0 - alpha, 1.0 + alpha)
-        beta_r = np.random.randint(-beta, beta)
-        alpha_g = np.random.uniform(1.0 - alpha, 1.0 + alpha)
-        beta_g = np.random.randint(-beta, beta)
-        alpha_b = np.random.uniform(1.0 - alpha, 1.0 + alpha)
-        beta_b = np.random.randint(-beta, beta)
-        new_rgb[:, :, 0] = np.clip(alpha_r * new_rgb[:, :, 0] + beta_r, 0, 255)
-        new_rgb[:, :, 1] = np.clip(alpha_g * new_rgb[:, :, 1] + beta_g, 0, 255)
-        new_rgb[:, :, 2] = np.clip(alpha_b * new_rgb[:, :, 2] + beta_b, 0, 255)
-
-        # color
-        mean_r = np.mean(new_rgb[:, :, 0])
-        mean_g = np.mean(new_rgb[:, :, 1])
-        mean_b = np.mean(new_rgb[:, :, 2])
-        per_r = np.random.normal(0.0, mean_r * gamma)
-        per_g = np.random.normal(0.0, mean_g * gamma)
-        per_b = np.random.normal(0.0, mean_b * gamma)
-        new_rgb[:, :, 0] = np.clip(new_rgb[:, :, 0] + per_r, 0, 255)
-        new_rgb[:, :, 1] = np.clip(new_rgb[:, :, 1] + per_g, 0, 255)
-        new_rgb[:, :, 2] = np.clip(new_rgb[:, :, 2] + per_b, 0, 255)
-
-    else:
-        # color
-        mean_r = np.mean(new_rgb[:, :, 0])
-        mean_g = np.mean(new_rgb[:, :, 1])
-        mean_b = np.mean(new_rgb[:, :, 2])
-        per_r = np.random.normal(0.0, mean_r * gamma)
-        per_g = np.random.normal(0.0, mean_g * gamma)
-        per_b = np.random.normal(0.0, mean_b * gamma)
-        new_rgb[:, :, 0] = np.clip(new_rgb[:, :, 0] + per_r, 0, 255)
-        new_rgb[:, :, 1] = np.clip(new_rgb[:, :, 1] + per_g, 0, 255)
-        new_rgb[:, :, 2] = np.clip(new_rgb[:, :, 2] + per_b, 0, 255)
-
-        # brightness and contrast
-        alpha_r = np.random.uniform(1.0 - alpha, 1.0 + alpha)
-        beta_r = np.random.randint(-beta, beta)
-        alpha_g = np.random.uniform(1.0 - alpha, 1.0 + alpha)
-        beta_g = np.random.randint(-beta, beta)
-        alpha_b = np.random.uniform(1.0 - alpha, 1.0 + alpha)
-        beta_b = np.random.randint(-beta, beta)
-        new_rgb[:, :, 0] = np.clip(alpha_r * new_rgb[:, :, 0] + beta_r, 0, 255)
-        new_rgb[:, :, 1] = np.clip(alpha_g * new_rgb[:, :, 1] + beta_g, 0, 255)
-        new_rgb[:, :, 2] = np.clip(alpha_b * new_rgb[:, :, 2] + beta_b, 0, 255)
-
-    # illumination
-    orig_img = new_rgb.astype(float).copy()
-    img = new_rgb / 255.0  # rescale to 0 to 1 range
-    img_rs = img.reshape(-1, 3)
-    img_centered = img_rs - np.mean(img_rs, axis=0)
-
-    img_cov = np.cov(img_centered, rowvar=False)
-    eig_vals, eig_vecs = np.linalg.eigh(img_cov)
-    sort_perm = eig_vals[::-1].argsort()
-    eig_vals[::-1].sort()
-    eig_vecs = eig_vecs[:, sort_perm]
-
-    # get [p1, p2, p3]
-    m1 = np.column_stack((eig_vecs))
-
-    # get 3x1 matrix of eigen values multiplied by random variable draw from normal
-    # distribution with mean of 0 and standard deviation of 0.1
-    m2 = np.zeros((3, 1))
-    alpha = np.random.normal(0, gain_ill)
-    m2[:, 0] = alpha * eig_vals[:]
-    add_vect = np.matrix(m1) * np.matrix(m2)
-
-    for idx in range(3):  # RGB
-        orig_img[..., idx] += add_vect[idx]
-
-    orig_img = np.clip(orig_img, 0.0, 255.0)
-    new_rgb = orig_img.astype(np.uint8)
-
-    # blur
-    drawKernx = [3, 5, 7]
-    freqKernx = np.bincount(drawKernx)
-    drawKerny = [3, 5, 7]
-    freqKerny = np.bincount(drawKerny)
-    kBlurx = np.random.choice(np.arange(len(freqKernx)), 1, p=freqKernx / len(drawKernx), replace=False)
-    sBlurx = random.uniform(0.00, 2.0)
-    kBlury = np.random.choice(np.arange(len(freqKerny)), 1, p=freqKerny / len(drawKerny), replace=False)
-    sBlury = random.uniform(0.00, 2.0)
-
-    new_rgb = cv2.GaussianBlur(new_rgb, (kBlurx, kBlury), sBlurx, sBlury)
-
-    #INVERSE MIP MAPPING
-
-    return new_rgb
-
-
-def imgaugRGB(img):
-
-    print(img.shape)
-    seq = iaa.Sequential([
-        # blur
-        iaa.SomeOf((0, 2), [
-            iaa.GaussianBlur((0.0, 2.0)),
-            iaa.AverageBlur(k=(3, 7)),
-            iaa.MedianBlur(k=(3, 7)),
-            iaa.BilateralBlur(d=(1, 7)),
-            iaa.MotionBlur(k=(3, 7))
-        ]),
-        #color
-        iaa.SomeOf((0, 2), [
-           #iaa.WithColorspace(),
-            iaa.AddToHueAndSaturation((-20, 20)),
-           #iaa.ChangeColorspace(to_colorspace[], alpha=0.5),
-            iaa.Grayscale(alpha=(0.0, 0.2))
-        ]),
-        #brightness
-        iaa.OneOf([
-            iaa.Sequential([
-                iaa.Add((-10, 10), per_channel=0.5),
-                iaa.Multiply((0.5, 1.5), per_channel=0.5)
-            ]),
-            iaa.Add((-10, 10), per_channel=0.5),
-            iaa.Multiply((0.5, 1.5), per_channel=0.5),
-            iaa.FrequencyNoiseAlpha(
-                exponent=(-4, 0),
-                first=iaa.Multiply((0.5, 1.5), per_channel=0.5),
-                second=iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5))
-            ]),
-        #contrast
-        iaa.SomeOf((0, 2), [
-            iaa.GammaContrast((0.5, 1.5), per_channel=0.5),
-            iaa.SigmoidContrast(gain=(0, 10), cutoff=(0.25, 0.75), per_channel=0.5),
-            iaa.LogContrast(gain=(0.75, 1), per_channel=0.5),
-            iaa.LinearContrast(alpha=(0.7, 1.3), per_channel=0.5)
-        ]),
-        #arithmetic
-        iaa.SomeOf((0, 3), [
-            iaa.AdditiveGaussianNoise(scale=(0, 0.05), per_channel=0.5),
-            iaa.AdditiveLaplaceNoise(scale=(0, 0.05), per_channel=0.5),
-            iaa.AdditivePoissonNoise(lam=(0, 8), per_channel=0.5),
-            iaa.Dropout(p=(0, 0.05), per_channel=0.5),
-            iaa.ImpulseNoise(p=(0, 0.05)),
-            iaa.SaltAndPepper(p=(0, 0.05)),
-            iaa.Salt(p=(0, 0.05)),
-            iaa.Pepper(p=(0, 0.05))
-        ]),
-        #iaa.Sometimes(p=0.5, iaa.JpegCompression((0, 30)), None),
-        ], random_order=True)
-    return seq.augment_image(img)
-
-
-def pasteCOCO_BG(img, cocos, mask):
-    bg = random.sample(cocos, 1)
-    bg = cv2.imread('/home/stefan/data/coco_test2017/' + bg[0], 1)
-    bg = cv2.resize(bg, (640, 480))
-    mask = np.repeat(mask[:, :, np.newaxis], 3, axis=2)
-
-    rep_img = np.where(mask > 0, img, bg)
-    return rep_img
-
-
 def get_normal(depth_refine, fx=-1, fy=-1, cx=-1, cy=-1, for_vis=True):
     res_y = depth_refine.shape[0]
     res_x = depth_refine.shape[1]
@@ -669,9 +499,8 @@ def get_normal(depth_refine, fx=-1, fy=-1, cx=-1, cy=-1, for_vis=True):
 if __name__ == "__main__":
 
     #root = '/home/sthalham/data/renderings/linemod_BG/patches31052018/patches'  # path to train samples
-    root = '/home/stefan/data/rendered_data/linemod_rgbd/patches'
-    target = '/home/stefan/data/train_data/linemod_rgb_sotaBG_augaft/'
-    coco_imgs = os.listdir('/home/stefan/data/coco_test2017')
+    root = '/home/stefan/data/rendered_data/linemod/patches'
+    target = '/home/stefan/data/train_data/linemod_depth_featsel_cls/'
     # [depth, normals, sensor, simplex, full]
     method = 'full'
     visu = False
@@ -711,7 +540,6 @@ if __name__ == "__main__":
     partPath = root + "/part/"
     gtPath = root
     maskPath = root + "/mask/"
-    rgbPath = root + "/rgb/"
     excludedImgs = []
     boxWidths = []
     boxHeights = []
@@ -731,19 +559,13 @@ if __name__ == "__main__":
             depfile = depPath + redname + "_depth.exr"
             partfile = partPath + redname + "_part.png"
             maskfile = maskPath + redname + "_mask.npy"
-            rgbfile = rgbPath + redname + "_rgb.png"
 
-            depth_refine, bboxes, poses, mask_ids, visibilities = manipulate_depth(gtfile, depfile, partfile)
+            depth_refine, mask, bboxes, poses, mask_ids, visibilities = manipulate_depth(gtfile, depfile, partfile)
             try:
                 obj_mask = np.load(maskfile)
             except Exception:
                 continue
-            obj_mask = obj_mask.astype(np.uint8)
-
-            mask_cont = np.repeat(obj_mask[:, :, np.newaxis], 3, axis=2)
-            cv2.imwrite("/home/stefan/visualize/masks.png", mask_cont)
-
-            rgb_img = cv2.imread(rgbfile, 1)
+            obj_mask = obj_mask.astype(np.int8)
 
             if bboxes is None:
                 excludedImgs.append(int(redname))
@@ -758,7 +580,7 @@ if __name__ == "__main__":
             #    continue
 
             depth_refine = np.multiply(depth_refine, 1000.0)  # to millimeters
-            rows, cols, chas = rgb_img.shape
+            rows, cols = depth_refine.shape
 
             for k in range(0, 2):
 
@@ -775,12 +597,75 @@ if __name__ == "__main__":
                     print('File exists, skip encoding and safing.')
 
                 else:
-                    #aug_rgb = augmentRGB(rgb_img)
-                    rgb_img = pasteCOCO_BG(rgb_img, coco_imgs, obj_mask)
-                    aug_rgb = imgaugRGB(rgb_img)
-                    #aug_rgb = pasteCOCO_BG(aug_rgb, coco_imgs, obj_mask)
-                    cv2.imwrite(fileName, aug_rgb)
-                    #cv2.imwrite(fileName[:-4]+'van.jpg', rgb_img)
+                    if method == 'normals':
+                        normals, depth_refine_aug, depth_imp = get_normal(depth_refine, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+                                                           for_vis=False)
+
+                    elif method == 'simplex':
+                        drawKern = [3, 5, 7]
+                        freqKern = np.bincount(drawKern)
+                        kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        sBlur = random.uniform(0.25, 3.5)
+                        sDep = random.uniform(0.002, 0.004)
+                        kShadow.astype(int)
+                        kMed.astype(int)
+                        kBlur.astype(int)
+                        kShadow = kShadow[0]
+                        kMed = kMed[0]
+                        kBlur = kBlur[0]
+                        augmentation_var = 2  # [0 = full, 1 = sensor, 2 = simplex]
+                        depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep, augmentation_var)
+
+                        aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+                                                         for_vis=False)
+
+                        #depth_imp[depth_imp > depthCut] = 0
+                        #scaCro = 255.0 / np.nanmax(depth_imp)
+                        #cross = np.multiply(depth_imp, scaCro)
+                        depthAug[depthAug > depthCut] = 0
+                        scaCro = 255.0 / np.nanmax(depthAug)
+                        cross = np.multiply(depthAug, scaCro)
+                        dep_sca = cross.astype(np.uint8)
+                        #cv2.imwrite(fileName, dep_sca)
+                        aug_xyz[:, :, 2] = dep_sca
+                        cv2.imwrite(fileName, aug_xyz)
+
+                    elif method == 'full':
+                        drawKern = [3, 5, 7]
+                        freqKern = np.bincount(drawKern)
+                        kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
+                        sBlur = random.uniform(0.25, 3.5)
+                        sDep = random.uniform(0.002, 0.004)
+                        kShadow.astype(int)
+                        kMed.astype(int)
+                        kBlur.astype(int)
+                        kShadow = kShadow[0]
+                        kMed = kMed[0]
+                        kBlur = kBlur[0]
+                        augmentation_var = 0  # [0 = full, 1 = sensor, 2 = simplex]
+                        #depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep, augmentation_var)
+                        if dataset is 'tless':
+                            depthAug = augmentTless(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep,
+                                                    augmentation_var)
+                        else:
+
+                            depthAug = augmentDepth(depth_refine, obj_mask, mask, kShadow, kMed, kBlur, sBlur, sDep,
+                                            augmentation_var)
+
+                        #depth2store = copy.deepcopy(depth_refine)
+                        #depth2store[depth_refine > depthCut] = 0
+                        #scaCro = 255.0 / np.nanmax(depth2store)
+                        #cross = np.multiply(depth2store, scaCro)
+                        #dep_sca = cross.astype(np.uint8)
+                        aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+                                                         for_vis=False)
+                        #aug_xyz[:,:,2] = dep_sca
+                        #cv2.imwrite(fileName, dep_sca)
+                        cv2.imwrite(fileName, aug_xyz)
 
                 imgID = int(newredname)
                 imgName = newredname + '.jpg'
@@ -800,15 +685,17 @@ if __name__ == "__main__":
                     #if (np.asscalar(bbox[0]) + 1) != wanna_cls:
                     #    continue
 
-                    if visibilities[i] < 0.3:
-                        print('visivility: ', visibilities[i], ' skip!')
-                        continue
+                    #print('object visibility: ', visibilities[i])
+                    #if np.asscalar(bbox[0]) + 1 == 13:
+                    #    continue
+                    #print('cls: ', np.asscalar(bbox[0]) + 1)
+                    #if visibilities[i] < 0.5:
+                    #    print('visivility: ', visibilities[i], ' skip!')
+                    #    continue
 
                     bbvis.append(bbox.astype(int))
                     objID = np.asscalar(bbox[0]) + 1
                     cats.append(objID)
-
-                    #print(objID)
 
                     bbox = (bbox).astype(int)
 
@@ -825,6 +712,34 @@ if __name__ == "__main__":
                     box3D = np.reshape(box3D, (16))
                     box3D = box3D.tolist()
                     bb3vis.append(box3D)
+                    feat_vis = []
+                    for f_i in range(0, 16, 2):
+                        f_x = int(box3D[f_i])
+                        f_y = int(box3D[f_i+1])
+                        if f_x > 639 or f_y > 479:
+                            feat_vis.append(0)
+                            continue
+                        feat_dep = depth_refine[f_y, f_x]
+                        feat_gt = tDbox[int(f_i/2), 2]
+                        #print('--- new feature ---')
+                        #print('feat_gt: ', feat_gt)
+
+                        #workaround to compensate for annotation inaccuracy
+                        nbh_th = 4
+                        feat_nbh = depth_refine[f_y-nbh_th:f_y+nbh_th, f_x-nbh_th:f_x+nbh_th]
+                        feat_nbh = feat_nbh.flatten()
+                        #print(feat_nbh)
+
+                        no_match = True
+                        for nbh_pixel in feat_nbh:
+                            if nbh_pixel < (feat_gt*1000.0) + 5.0 and nbh_pixel > (feat_gt*1000.0) - 5.0:
+                                feat_vis.append(1)
+                                no_match = False
+                                break
+                        if no_match == True:
+                            feat_vis.append(0)
+
+                    print('feature visibility: ', feat_vis)
 
                     bbox = bbox.astype(int)
                     x1 = np.asscalar(bbox[2])
@@ -866,7 +781,8 @@ if __name__ == "__main__":
                         "pose": pose,
                         "segmentation": box3D,
                         "area": area,
-                        "iscrowd": 0
+                        "iscrowd": 0,
+                        "feature_visibility": feat_vis
                     }
                     #print('norm q: ', np.linalg.norm(pose[3:]))
 
@@ -901,13 +817,13 @@ if __name__ == "__main__":
                     times = []
 
                 if visu is True:
-                    img = aug_rgb
+                    img = aug_xyz
                     #img = cv2.imread(fileName, cv2.IMREAD_UNCHANGED)
                     for i, bb in enumerate(bbvis[:]):
 
-                        #cv2.rectangle(aug_rgb, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
+                        #cv2.rectangle(aug_xyz, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
                         #              (255, 255, 255), 2)
-                        #cv2.rectangle(aug_rgb, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
+                        #cv2.rectangle(img, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
                         #              (0, 0, 0), 1)
                         #
                         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -920,7 +836,7 @@ if __name__ == "__main__":
 
                         fontColor2 = (255, 255, 255)
                         fontthickness2 = 3
-                        cv2.putText(aug_rgb, gtText,
+                        cv2.putText(aug_xyz, gtText,
                                 bottomLeftCornerOfText,
                                 font,
                                 fontScale,
@@ -928,7 +844,7 @@ if __name__ == "__main__":
                                 fontthickness2,
                                 lineType)
 
-                        cv2.putText(aug_rgb, gtText,
+                        cv2.putText(aug_xyz, gtText,
                                 bottomLeftCornerOfText,
                                 font,
                                 fontScale,
@@ -936,24 +852,44 @@ if __name__ == "__main__":
                                 fontthickness,
                                 lineType)
 
-                        pose = np.asarray(bb3vis[i], dtype=np.float32)
-                            
-                        colR = random.randint(0, 255)
-                        colG = random.randint(0, 255)
-                        colB = random.randint(0, 255)
 
-                        img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()), (colR, colG, colB), 2)
-                        img = cv2.line(img, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
+                        #print(posvis[i])
+                        if i is not poses.shape[0]:
+                            pose = np.asarray(bb3vis[i], dtype=np.float32)
+
+                            #pose2D = posvis[i]
+                            #print(str(cats[i]))
+                            
+                            colR = random.randint(0, 255)
+                            colG = random.randint(0, 255)
+                            colB = random.randint(0, 255)
+                            '''
+                            #rot_lie = [[0.0, pose[3], pose[4]], [-pose[3], 0.0, pose[5]], [-pose[4], -pose[5], 0.0]]
+                            #ssm =np.asarray(rot_lie, dtype=np.float32)
+                            #map = geometry.rotations.map_hat(ssm)
+                            #quat = tf3d.euler.euler2quat(pose2D[3], pose2D[4], pose2D[5])
+                            #quat = quat / np.linalg.norm(quat)
+                            pose2D = np.concatenate([postra[i], pose2D[3:]])
+                            #print('x: ', (pose[0]-bb[2])/(bb[4]-bb[2]))
+                            #print('y: ', (pose[1] - bb[1]) / (bb[3] - bb[1]))
+                            #print(pose[0:2], bb[1:])
+
+                            #cv2.circle(img, (int(pose[0]), int(pose[1])), 5, (0, 255, 0), 3)
+                            draw_axis(aug_xyz, pose2D)
+                            '''
+
+                            img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[14:16].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[8:10].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[10:12].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[12:14].ravel()), tuple(pose[14:16].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[14:16].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
 
                     cv2.imwrite(fileName, img)
 
