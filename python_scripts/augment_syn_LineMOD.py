@@ -500,11 +500,11 @@ def get_normal(depth_refine, fx=-1, fy=-1, cx=-1, cy=-1, for_vis=True):
 if __name__ == "__main__":
 
     #root = '/home/sthalham/data/renderings/linemod_BG/patches31052018/patches'  # path to train samples
-    root = '/home/sthalham/data/renderings/linemod_rgbd/patches'
-    target = '/home/sthalham/data/prepro/linemod_depth_rgbd_double/'
+    root = '/home/sthalham/data/renderings/linemod/patches'
+    target = '/home/sthalham/data/prepro/linemod_test/'
     # [depth, normals, sensor, simplex, full]
     method = 'full'
-    visu = False
+    visu = True
     n_samples = 30000 # real=1214
     if dataset is 'tless':
         n_samples = 2524
@@ -583,7 +583,7 @@ if __name__ == "__main__":
             depth_refine = np.multiply(depth_refine, 1000.0)  # to millimeters
             rows, cols = depth_refine.shape
 
-            for k in range(0, 2):
+            for k in range(0, 1):
 
                 newredname = redname[1:] + str(k)
 
@@ -658,14 +658,14 @@ if __name__ == "__main__":
                                             augmentation_var)
 
                         #depth2store = copy.deepcopy(depth_refine)
-                        #depth2store[depth_refine > depthCut] = 0
-                        #scaCro = 255.0 / np.nanmax(depth2store)
-                        #cross = np.multiply(depth2store, scaCro)
-                        #dep_sca = cross.astype(np.uint8)
-                        aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
-                                                         for_vis=False)
-                        #aug_xyz[:,:,2] = dep_sca
-                        #cv2.imwrite(fileName, dep_sca)
+                        depth_refine[depth_refine > depthCut] = 0
+                        scaCro = 255.0 / np.nanmax(depth_refine)
+                        cross = np.multiply(depth_refine, scaCro)
+                        aug_xyz = cross.astype(np.uint8)
+                        aug_xyz = np.repeat(aug_xyz[:, :, np.newaxis], 3, 2)
+                        #aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+                        #                                 for_vis=False)
+
                         cv2.imwrite(fileName, aug_xyz)
 
                 imgID = int(newredname)
