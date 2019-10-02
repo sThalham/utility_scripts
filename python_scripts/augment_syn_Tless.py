@@ -437,7 +437,7 @@ if __name__ == "__main__":
 
     #root = '/home/sthalham/data/renderings/linemod_BG/patches31052018/patches'  # path to train samples
     root = '/home/stefan/data/rendered_data/tless/patches'
-    target = '/home/stefan/data/train_data/tless_3dbox/'
+    target = '/home/stefan/data/train_data/tless_test/'
     # [depth, normals, sensor, simplex, full]
     method = 'full'
     visu = True
@@ -555,11 +555,11 @@ if __name__ == "__main__":
                     aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
                                                          for_vis=False)
 
-                    #depth_refine = cv2.resize(depth_refine, (720, 540))
-                    #sca = 255 / 2000.0
-                    #depth_norm = depth_refine * sca
-                    #aug_xyz = depth_norm.astype(int)
-                    #aug_xyz = np.repeat(aug_xyz[:, :, np.newaxis], 3, 2)
+                    depth_refine = cv2.resize(depth_refine, (720, 540))
+                    sca = 255 / 2000.0
+                    depth_norm = depth_refine * sca
+                    aug_xyz = depth_norm.astype(int)
+                    aug_xyz = np.repeat(aug_xyz[:, :, np.newaxis], 3, 2)
                     cv2.imwrite(fileName, aug_xyz)
 
                 imgID = int(newredname)
