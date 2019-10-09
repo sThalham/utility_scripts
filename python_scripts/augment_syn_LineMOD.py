@@ -589,7 +589,7 @@ if __name__ == "__main__":
 
                 newredname = redname[1:] + str(k)
 
-                #newredname = redname[1:]
+                print(newredname)
 
                 fileName = target + "images/train/" + newredname + '.jpg'
                 myFile = Path(fileName)
@@ -688,7 +688,7 @@ if __name__ == "__main__":
                     #if (np.asscalar(bbox[0]) + 1) != wanna_cls:
                     #    continue
 
-                    if visibilities[i] < 0.7:
+                    if visibilities[i] < 0.5:
                         print('visivility: ', visibilities[i], ' skip!')
                         continue
 
@@ -743,6 +743,7 @@ if __name__ == "__main__":
                     #if pose[3] < 0.0:
                     #    raise ValueError('w < 0.0')
 
+                    print(objID)
                     annoID = annoID + 1
                     tempTA = {
                         "id": annoID,
@@ -789,12 +790,12 @@ if __name__ == "__main__":
                 if visu is True:
                     img = aug_xyz
                     #img = cv2.imread(fileName, cv2.IMREAD_UNCHANGED)
-                    for i, bb in enumerate(bbvis[:]):
+                    for i, bb in enumerate(bbvis):
 
-                        #cv2.rectangle(aug_xyz, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
-                        #              (255, 255, 255), 2)
-                        #cv2.rectangle(img, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
-                        #              (0, 0, 0), 1)
+                        cv2.rectangle(aug_xyz, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
+                                      (255, 255, 255), 2)
+                        cv2.rectangle(img, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
+                                      (0, 0, 0), 1)
                         #
                         font = cv2.FONT_HERSHEY_SIMPLEX
                         bottomLeftCornerOfText = (int(bb[2]), int(bb[1]))
