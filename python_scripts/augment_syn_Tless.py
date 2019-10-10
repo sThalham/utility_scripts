@@ -437,10 +437,10 @@ if __name__ == "__main__":
 
     #root = '/home/sthalham/data/renderings/linemod_BG/patches31052018/patches'  # path to train samples
     root = '/home/stefan/data/rendered_data/tless/patches'
-    target = '/home/stefan/data/train_data/tless_test/'
+    target = '/home/stefan/data/train_data/tless_3DBox/'
     # [depth, normals, sensor, simplex, full]
     method = 'full'
-    visu = True
+    visu = False
     n_samples = 30000 # real=1214
     if dataset is 'tless':
         n_samples = 2524
