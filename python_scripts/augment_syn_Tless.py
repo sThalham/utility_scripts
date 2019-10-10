@@ -30,7 +30,7 @@ fxkin = 652.14  # blender calculated alt.: 652.76
 fykin = 610.11# blender calculated   alt.: 610.17
 cxkin = 360
 cykin = 270
-depthCut = 3000
+depthCut = 2000
 
 
 def matang(A, B):
@@ -62,12 +62,11 @@ def get_cont_sympose(rot_pose, sym):
             axis_order += axis
             multiply.append(1)
 
-    axis_1, axis_2, axis_3 = tf3d.euler.mat2euler(rot_pose, axis_order)
+    axis_1, axis_2, axis_3 = tf3d.euler.mat2euler(rot_pose[:3, :3], axis_order)
     axis_1 = axis_1 * multiply[0]
     axis_2 = axis_2 * multiply[1]
     axis_3 = axis_3 * multiply[2]
-    rot_pose = tf3d.euler.euler2mat(axis_1, axis_2, axis_3, axis_order)  #
-    sym_axis_tr = np.matmul(rot_pose, np.array([sym[:3]]).T).T[0]
+    rot_pose[:3, :3] = tf3d.euler.euler2mat(axis_1, axis_2, axis_3, axis_order)  #
 
     return rot_pose
 
@@ -76,29 +75,28 @@ def get_disc_sympose(rot_pose, sym, oid):
 
     if len(sym) > 3:
         t = sym[:3, 3]
-        print('sym: ', tf3d.euler.mat2euler(sym))
-        rot_sym = np.matmul(rot_pose, sym[:3, :3])
+        rot_sym = np.matmul(rot_pose[:3, :3], sym[:3, :3])
         rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(rot_pose)
         sym_1, sym_2, sym_3 = tf3d.euler.mat2euler(rot_sym)
-        if oid in [8, 10, 11, 12, 19]:
-            # TODO
-            rot_pose = rot_pose
-        elif rot_3 < 0.0:
-            rot_pose = tf3d.euler.euler2mat(sym_1, sym_2, sym_3)
+        #if oid in [5, 6, 7, 8, 9, 10, 11, 12, 19, 20, 23, 25, 26, 28, 29]:
+        #    # TODO
+        #    rot_pose = rot_pose
+        if rot_3 < 0.0:
+            rot_pose[:3, :3] = tf3d.euler.euler2mat(sym_1, sym_2, sym_3)
     else:
-        rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(rot_pose)
+        rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(rot_pose[:3, :3])
         if rot_3 < 0.0 or rot_3 > (math.pi/2):
-            sym1 = np.matmul(rot_pose, sym[0][:3, :3])
+            sym1 = np.matmul(rot_pose[:3, :3], sym[0][:3, :3])
             rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(sym1)
-            rot_pose = tf3d.euler.euler2mat(rot_1, rot_2, rot_3)
+            rot_pose[:3, :3] = tf3d.euler.euler2mat(rot_1, rot_2, rot_3)
         if rot_3 < 0.0 or rot_3 > (math.pi/2):
-            sym1 = np.matmul(rot_pose, sym[1][:3, :3])
+            sym1 = np.matmul(rot_pose[:3, :3], sym[1][:3, :3])
             rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(sym1)
-            rot_pose = tf3d.euler.euler2mat(rot_1, rot_2, rot_3)
+            rot_pose[:3, :3] = tf3d.euler.euler2mat(rot_1, rot_2, rot_3)
         if rot_3 < 0.0 or rot_3 > (math.pi/2):
-            sym1 = np.matmul(rot_pose, sym[2][:3, :3])
+            sym1 = np.matmul(rot_pose[:3, :3], sym[2][:3, :3])
             rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(sym1)
-            rot_pose = tf3d.euler.euler2mat(rot_1, rot_2, rot_3)
+            rot_pose[:3, :3] = tf3d.euler.euler2mat(rot_1, rot_2, rot_3)
 
     return rot_pose
 
@@ -200,7 +198,6 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
 
     depth = depth * np.cos(np.radians(fov / depth.shape[1] * np.abs(uv_table[:, :, 1]))) * np.cos(
         np.radians(fov / depth.shape[1] * uv_table[:, :, 0]))
-    print(depth.shape)
 
     #print('depth: ', np.nanmean(depth))
     if np.nanmean(depth) < 0.4 or np.nanmean(depth) > 4.0:
@@ -231,17 +228,17 @@ def augmentDepth(depth, obj_mask, mask_ori, shadowClK, shadowMK, blurK, blurS, d
         simplex = True
 
     # erode and blur mask to get more realistic appearance
-    partmask = mask_ori
-    partmask = partmask.astype(np.float32)
-    partmask = np.where(partmask > 0.0, 255.0, 0.0)
+    #partmask = mask_ori
+    #partmask = partmask.astype(np.float32)
+    #partmask = np.where(partmask > 0.0, 255.0, 0.0)
 
     # apply shadow
-    kernel = np.ones((shadowClK, shadowClK))
-    partmask = cv2.morphologyEx(partmask, cv2.MORPH_OPEN, kernel)
-    partmask = signal.medfilt2d(partmask, kernel_size=shadowMK)
-    partmask = partmask.astype(np.uint8)
-    mask = partmask > 20
-    depth = np.where(mask, depth, 0.0)
+    #kernel = np.ones((shadowClK, shadowClK))
+    #partmask = cv2.morphologyEx(partmask, cv2.MORPH_OPEN, kernel)
+    #partmask = signal.medfilt2d(partmask, kernel_size=shadowMK)
+    #partmask = partmask.astype(np.uint8)
+    #mask = partmask > 20
+    #depth = np.where(mask, depth, 0.0)
 
     if sensor is True:
         depthFinal = cv2.resize(depth, None, fx=1 / 2, fy=1 / 2)
@@ -441,7 +438,7 @@ if __name__ == "__main__":
     mesh_info = '/home/sthalham/data/Meshes/tless_BOP/models_info.json'
     # [depth, normals, sensor, simplex, full]
     method = 'full'
-    visu = True
+    visu = False
     n_samples = 30000 # real=1214
     if dataset is 'tless':
         n_samples = 2524
@@ -526,7 +523,7 @@ if __name__ == "__main__":
             else:
                 sym_disc[int(key), :, :] = np.asarray(syms[0], dtype=np.float32).reshape((4,4))
         else:
-            print(key, ' no symmetry')
+            pass
 
 
     syns = os.listdir(root)
@@ -616,7 +613,7 @@ if __name__ == "__main__":
 
                 imgID = int(newredname)
                 imgName = newredname + '.jpg'
-                print(imgName)
+                #print(imgName)
 
                 # bb scaling because of image scaling
                 bbvis = []
@@ -638,19 +635,24 @@ if __name__ == "__main__":
                     bbox = (bbox).astype(int)
 
                     rot = tf3d.quaternions.quat2mat(poses[i, 3:])
+                    tra = poses[i, 0:3]
+                    pose = np.zeros((4,4), dtype=np.float32)
+                    pose[:3, :3] = rot
+                    pose[:3, 3] = tra
+                    pose[3, 3] = 1
 
                     if objID in [1, 2, 3, 4, 13, 14, 15, 16, 17, 24, 30]:
-                        rot = get_cont_sympose(rot, sym_cont[objID, :])
+                        rot = get_cont_sympose(pose, sym_cont[objID, :])
 
                     elif objID in [5, 6, 7, 8, 9, 10, 11, 12, 19, 20, 23, 25, 26, 28, 29]:
-                        rot = get_disc_sympose(rot, sym_disc[objID, :, :], objID)
+                        rot = get_disc_sympose(pose, sym_disc[objID, :, :], objID)
 
                     elif objID == 27:
-                        rot = get_disc_sympose(rot, [sym_disc[27, :, :], sym_disc[31, :, :], sym_disc[32, :, :]], objID)
+                        rot = get_disc_sympose(pose, [sym_disc[27, :, :], sym_disc[31, :, :], sym_disc[32, :, :]], objID)
 
                     rot = np.asarray(rot, dtype=np.float32)
 
-                    tDbox = rot.dot(threeD_boxes[bbox[0]+1, :, :].T).T
+                    tDbox = rot[:3, :3].dot(threeD_boxes[bbox[0]+1, :, :].T).T
                     tDbox = tDbox + np.repeat(poses[i, np.newaxis, 0:3], 8, axis=0)
 
                     #if objID == 10 or objID == 11:
@@ -743,7 +745,7 @@ if __name__ == "__main__":
                     img = aug_xyz
                     for i, bb in enumerate(bbvis):
 
-                        if cats[i] != 27:
+                        if cats[i] not in [19, 20, 23]:
                             continue
 
                         bb = np.array(bb)
@@ -810,7 +812,7 @@ if __name__ == "__main__":
                             draw_axis(aug_xyz, pose2D)
                             '''
 
-                            img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (50, 112, 220), 2)
+                            img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (130, 245, 13), 2)
                             img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (50, 112, 220), 2)
                             img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (50, 112, 220), 2)
                             img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (50, 112, 220), 2)
