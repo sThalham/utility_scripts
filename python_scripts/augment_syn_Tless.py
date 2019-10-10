@@ -74,7 +74,6 @@ def get_cont_sympose(rot_pose, sym):
 def get_disc_sympose(rot_pose, sym, oid):
 
     if len(sym) > 3:
-        t = sym[:3, 3]
         rot_sym = np.matmul(rot_pose[:3, :3], sym[:3, :3])
         rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(rot_pose)
         sym_1, sym_2, sym_3 = tf3d.euler.mat2euler(rot_sym)
@@ -83,6 +82,8 @@ def get_disc_sympose(rot_pose, sym, oid):
         #    rot_pose = rot_pose
         if rot_3 < 0.0:
             rot_pose[:3, :3] = tf3d.euler.euler2mat(sym_1, sym_2, sym_3)
+            sym[:3, 3] *= 0.001
+            rot_pose = np.matmul(rot_pose, sym)
     else:
         rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(rot_pose[:3, :3])
         if rot_3 < 0.0 or rot_3 > (math.pi/2):
@@ -175,7 +176,7 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
         print('invalid train image, no bboxes in fov')
         return None, None, None, None, None, None
 
-    if (visibilities > 0.5).all():
+    if (visibilities < 0.5).all():
         print('no visibility above 0.5')
         return None, None, None, None, None, None
 
@@ -438,7 +439,7 @@ if __name__ == "__main__":
     mesh_info = '/home/sthalham/data/Meshes/tless_BOP/models_info.json'
     # [depth, normals, sensor, simplex, full]
     method = 'full'
-    visu = False
+    visu = True
     n_samples = 30000 # real=1214
     if dataset is 'tless':
         n_samples = 2524
@@ -745,8 +746,8 @@ if __name__ == "__main__":
                     img = aug_xyz
                     for i, bb in enumerate(bbvis):
 
-                        if cats[i] not in [19, 20, 23]:
-                            continue
+                        #if cats[i] not in [19, 20, 23]:
+                        #    continue
 
                         bb = np.array(bb)
 
