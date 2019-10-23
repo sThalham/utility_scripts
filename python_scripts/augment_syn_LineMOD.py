@@ -500,11 +500,13 @@ def get_normal(depth_refine, fx=-1, fy=-1, cx=-1, cy=-1, for_vis=True):
 if __name__ == "__main__":
 
     #root = '/home/sthalham/data/renderings/linemod_BG/patches31052018/patches'  # path to train samples
-    root = '/home/stefan/data/rendered_data/linemod/patches'
-    target = '/home/stefan/data/train_data/linemod_depth_vis07/'
+
+    root = '/home/sthalham/data/renderings/linemod/patches'
+    target = '/home/sthalham/data/prepro/linemod_test/'
+
     # [depth, normals, sensor, simplex, full]
     method = 'full'
-    visu = False
+    visu = True
     n_samples = 30000 # real=1214
     if dataset is 'tless':
         n_samples = 2524
@@ -583,11 +585,11 @@ if __name__ == "__main__":
             depth_refine = np.multiply(depth_refine, 1000.0)  # to millimeters
             rows, cols = depth_refine.shape
 
-            for k in range(0, 2):
+            for k in range(0, 1):
 
                 newredname = redname[1:] + str(k)
 
-                #newredname = redname[1:]
+                print(newredname)
 
                 fileName = target + "images/train/" + newredname + '.jpg'
                 myFile = Path(fileName)
@@ -658,14 +660,14 @@ if __name__ == "__main__":
                                             augmentation_var)
 
                         #depth2store = copy.deepcopy(depth_refine)
-                        #depth2store[depth_refine > depthCut] = 0
-                        #scaCro = 255.0 / np.nanmax(depth2store)
-                        #cross = np.multiply(depth2store, scaCro)
-                        #dep_sca = cross.astype(np.uint8)
-                        aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
-                                                         for_vis=False)
-                        #aug_xyz[:,:,2] = dep_sca
-                        #cv2.imwrite(fileName, dep_sca)
+                        depth_refine[depth_refine > depthCut] = 0
+                        scaCro = 255.0 / np.nanmax(depth_refine)
+                        cross = np.multiply(depth_refine, scaCro)
+                        aug_xyz = cross.astype(np.uint8)
+                        aug_xyz = np.repeat(aug_xyz[:, :, np.newaxis], 3, 2)
+                        #aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
+                        #                                 for_vis=False)
+
                         cv2.imwrite(fileName, aug_xyz)
 
                 imgID = int(newredname)
@@ -686,7 +688,7 @@ if __name__ == "__main__":
                     #if (np.asscalar(bbox[0]) + 1) != wanna_cls:
                     #    continue
 
-                    if visibilities[i] < 0.7:
+                    if visibilities[i] < 0.5:
                         print('visivility: ', visibilities[i], ' skip!')
                         continue
 
@@ -741,6 +743,7 @@ if __name__ == "__main__":
                     #if pose[3] < 0.0:
                     #    raise ValueError('w < 0.0')
 
+                    print(objID)
                     annoID = annoID + 1
                     tempTA = {
                         "id": annoID,
@@ -787,12 +790,12 @@ if __name__ == "__main__":
                 if visu is True:
                     img = aug_xyz
                     #img = cv2.imread(fileName, cv2.IMREAD_UNCHANGED)
-                    for i, bb in enumerate(bbvis[:]):
+                    for i, bb in enumerate(bbvis):
 
-                        #cv2.rectangle(aug_xyz, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
-                        #              (255, 255, 255), 2)
-                        #cv2.rectangle(img, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
-                        #              (0, 0, 0), 1)
+                        cv2.rectangle(aug_xyz, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
+                                      (255, 255, 255), 2)
+                        cv2.rectangle(img, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
+                                      (0, 0, 0), 1)
                         #
                         font = cv2.FONT_HERSHEY_SIMPLEX
                         bottomLeftCornerOfText = (int(bb[2]), int(bb[1]))

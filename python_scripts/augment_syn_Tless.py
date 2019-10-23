@@ -26,83 +26,80 @@ resY = 540
 
 # fov = 1.0088002681732178
 fov = 57.8
-fxkin = 651.62  # blender calculated alt.: 652.76
-fykin = 609.62# blender calculated   alt.: 610.17
+fxkin = 652.14  # blender calculated alt.: 652.76
+fykin = 610.11# blender calculated   alt.: 610.17
 cxkin = 360
 cykin = 270
 depthCut = 2000
 
-od1 = np.array([35.087, 35.787, 60.686], dtype=np.float32)
-od2 = np.array([43.704, 43.833, 60.563], dtype=np.float32)
-od3 = np.array([46.905, 46.885, 60.585], dtype=np.float32)
-od4 = np.array([40.091, 40.382, 73.388], dtype=np.float32)
-od5 = np.array([96.528, 56.043, 59.841], dtype=np.float32)
-od6 = np.array([92.618, 53.609, 57.424], dtype=np.float32)
-od7 = np.array([152.934, 90.79, 63.504], dtype=np.float32)
-od8 = np.array([184.453, 105.453, 62.845], dtype=np.float32)
-od9 = np.array([123.896, 84.207, 62.303], dtype=np.float32)
-od10 = np.array([82.916, 45.675, 60.05], dtype=np.float32)
-od11 = np.array([55.228, 47.329, 56.95], dtype=np.float32)
-od12 = np.array([80.742, 56.024, 57.268], dtype=np.float32)
-od13 = np.array([38.31, 38.589, 46.288], dtype=np.float32)
-od14 = np.array([43.632, 43.688, 62.542], dtype=np.float32)
-od15 = np.array([43.585, 43.681, 55.335], dtype=np.float32)
-od16 = np.array([53.333, 53.588, 47.245], dtype=np.float32)
-od17 = np.array([108.423, 107.962, 60.941], dtype=np.float32)
-od18 = np.array([97.25, 97.885, 60.489], dtype=np.float32)
-od19 = np.array([67.678, 60.668, 48.258], dtype=np.float32)
-od20 = np.array([85.498, 60.635, 48.853], dtype=np.float32)
-od21 = np.array([80.518, 62.183, 44.819], dtype=np.float32)
-od22 = np.array([80.167, 59.827, 43.724], dtype=np.float32)
-od23 = np.array([137.774, 58.024, 52.21], dtype=np.float32)
-od24 = np.array([42.438, 42.147, 78.282], dtype=np.float32)
-od25 = np.array([91.977, 61.903, 59.515], dtype=np.float32)
-od26 = np.array([91.929, 61.831, 59.563], dtype=np.float32)
-od27 = np.array([107.639, 107.598, 55.694], dtype=np.float32)
-od28 = np.array([100.059, 100.356, 48.037], dtype=np.float32)
-od29 = np.array([112.52, 77.735, 59.244], dtype=np.float32)
-od30 = np.array([78.32, 78.27, 51.252], dtype=np.float32)
 
-tdbox_transform = np.array([[0.0005, 0.0005, 0.0005], #[35.087, 35.787, 60.686]
-                                     [0.0005, 0.0005, -0.0005],
-                                     [0.0005, -0.0005, -0.0005],
-                                     [0.0005, -0.0005, 0.0005],
-                                     [-0.0005, 0.0005, 0.0005],
-                                     [-0.0005, 0.0005, -0.0005],
-                                     [-0.0005, -0.0005, -0.0005],
-                                     [-0.0005, -0.0005, 0.0005]])
+def matang(A, B):
 
-threeD_boxes = np.ndarray((30, 8, 3), dtype=np.float32)
-threeD_boxes[0, :, :] = np.multiply(tdbox_transform, od1)
-threeD_boxes[1, :, :] = np.multiply(tdbox_transform, od2)
-threeD_boxes[2, :, :] = np.multiply(tdbox_transform, od3)
-threeD_boxes[3, :, :] = np.multiply(tdbox_transform, od4)
-threeD_boxes[4, :, :] = np.multiply(tdbox_transform, od5)
-threeD_boxes[5, :, :] = np.multiply(tdbox_transform, od6)
-threeD_boxes[6, :, :] = np.multiply(tdbox_transform, od7)
-threeD_boxes[7, :, :] = np.multiply(tdbox_transform, od8)
-threeD_boxes[8, :, :] = np.multiply(tdbox_transform, od9)
-threeD_boxes[9, :, :] = np.multiply(tdbox_transform, od10)
-threeD_boxes[10, :, :] = np.multiply(tdbox_transform, od11)
-threeD_boxes[11, :, :] = np.multiply(tdbox_transform, od12)
-threeD_boxes[12, :, :] = np.multiply(tdbox_transform, od13)
-threeD_boxes[13, :, :] = np.multiply(tdbox_transform, od14)
-threeD_boxes[14, :, :] = np.multiply(tdbox_transform, od15)
-threeD_boxes[15, :, :] = np.multiply(tdbox_transform, od16)
-threeD_boxes[16, :, :] = np.multiply(tdbox_transform, od17)
-threeD_boxes[17, :, :] = np.multiply(tdbox_transform, od18)
-threeD_boxes[18, :, :] = np.multiply(tdbox_transform, od19)
-threeD_boxes[19, :, :] = np.multiply(tdbox_transform, od20)
-threeD_boxes[20, :, :] = np.multiply(tdbox_transform, od21)
-threeD_boxes[21, :, :] = np.multiply(tdbox_transform, od22)
-threeD_boxes[22, :, :] = np.multiply(tdbox_transform, od23)
-threeD_boxes[23, :, :] = np.multiply(tdbox_transform, od24)
-threeD_boxes[24, :, :] = np.multiply(tdbox_transform, od25)
-threeD_boxes[25, :, :] = np.multiply(tdbox_transform, od26)
-threeD_boxes[26, :, :] = np.multiply(tdbox_transform, od27)
-threeD_boxes[27, :, :] = np.multiply(tdbox_transform, od28)
-threeD_boxes[28, :, :] = np.multiply(tdbox_transform, od29)
-threeD_boxes[29, :, :] = np.multiply(tdbox_transform, od30)
+    r_oa_t = np.transpose(A)
+    r_ab = np.multiply(r_oa_t, B)
+
+    thetrace = (np.trace(r_ab) -1) / 2
+    #if thetrace < 0.0:
+    #    thetrace *= -1
+    if thetrace < 0.0:
+        while thetrace < 1:
+            thetrace += 1
+    if thetrace > 0.0:
+        while thetrace > 1:
+            thetrace -= 1
+    return np.rad2deg(np.arccos(thetrace))
+
+
+def get_cont_sympose(rot_pose, sym):
+    axis_order = 's'
+    multiply = []
+    for axis_id, axis in enumerate(['x', 'y', 'z']):
+        if (sym[axis_id] == 1):
+            axis_order += axis
+            multiply.append(0)
+    for axis_id, axis in enumerate(['x', 'y', 'z']):
+        if (sym[axis_id] == 0):
+            axis_order += axis
+            multiply.append(1)
+
+    axis_1, axis_2, axis_3 = tf3d.euler.mat2euler(rot_pose[:3, :3], axis_order)
+    axis_1 = axis_1 * multiply[0]
+    axis_2 = axis_2 * multiply[1]
+    axis_3 = axis_3 * multiply[2]
+    rot_pose[:3, :3] = tf3d.euler.euler2mat(axis_1, axis_2, axis_3, axis_order)  #
+
+    return rot_pose
+
+
+def get_disc_sympose(rot_pose, sym, oid):
+
+    if len(sym) > 3:
+        rot_sym = np.matmul(rot_pose[:3, :3], sym[:3, :3])
+        rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(rot_pose[:3, :3], 'szyx')
+        sym_1, sym_2, sym_3 = tf3d.euler.mat2euler(rot_sym, 'szyx')
+        #if oid in [5, 6, 7, 8, 9, 10, 11, 12, 19, 20, 23, 25, 26, 28, 29]:
+        #    # TODO
+        #    rot_pose = rot_pose
+        if rot_1 < 0.0:
+            rot_pose[:3, :3] = tf3d.euler.euler2mat(sym_1, sym_2, sym_3, 'szyx')
+            sym[:3, 3] *= 0.001
+            rot_pose = np.matmul(rot_pose, sym)
+    else:
+        rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(rot_pose[:3, :3], 'szyx')
+        if rot_1 < 0.0 or rot_1 > (math.pi/2):
+            sym1 = np.matmul(rot_pose[:3, :3], sym[0][:3, :3])
+            rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(sym1, 'szyx')
+            rot_pose[:3, :3] = tf3d.euler.euler2mat(rot_1, rot_2, rot_3, 'szyx')
+        if rot_1 < 0.0 or rot_1 > (math.pi/2):
+            sym1 = np.matmul(rot_pose[:3, :3], sym[1][:3, :3])
+            rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(sym1, 'szyx')
+            rot_pose[:3, :3] = tf3d.euler.euler2mat(rot_1, rot_2, rot_3, 'szyx')
+        if rot_1 < 0.0 or rot_1 > (math.pi/2):
+            sym1 = np.matmul(rot_pose[:3, :3], sym[2][:3, :3])
+            rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(sym1, 'szyx')
+            rot_pose[:3, :3] = tf3d.euler.euler2mat(rot_1, rot_2, rot_3, 'szyx')
+
+    return rot_pose
 
 
 def draw_axis(img, poses):
@@ -179,6 +176,10 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
         print('invalid train image, no bboxes in fov')
         return None, None, None, None, None, None
 
+    if (visibilities < 0.5).all():
+        print('no visibility above 0.5')
+        return None, None, None, None, None, None
+
     pt = Imath.PixelType(Imath.PixelType.FLOAT)
     golden = OpenEXR.InputFile(fn_depth)
     dw = golden.header()['dataWindow']
@@ -200,7 +201,7 @@ def manipulate_depth(fn_gt, fn_depth, fn_part):
         np.radians(fov / depth.shape[1] * uv_table[:, :, 0]))
 
     #print('depth: ', np.nanmean(depth))
-    if np.nanmean(depth) < 0.5 or np.nanmean(depth) > 4.0:
+    if np.nanmean(depth) < 0.4 or np.nanmean(depth) > 4.0:
         print('invalid train image; range is wrong')
         return None, None, None, None, None, None
 
@@ -228,23 +229,20 @@ def augmentDepth(depth, obj_mask, mask_ori, shadowClK, shadowMK, blurK, blurS, d
         simplex = True
 
     # erode and blur mask to get more realistic appearance
-    partmask = mask_ori
-    partmask = partmask.astype(np.float32)
-    #mask = partmask > (np.median(partmask) * 0.4)
-    partmask = np.where(partmask > 0.0, 255.0, 0.0)
-
-    cv2.imwrite('/home/sthalham/partmask.png', partmask)
+    #partmask = mask_ori
+    #partmask = partmask.astype(np.float32)
+    #partmask = np.where(partmask > 0.0, 255.0, 0.0)
 
     # apply shadow
-    kernel = np.ones((shadowClK, shadowClK))
-    partmask = cv2.morphologyEx(partmask, cv2.MORPH_OPEN, kernel)
-    partmask = signal.medfilt2d(partmask, kernel_size=shadowMK)
-    partmask = partmask.astype(np.uint8)
-    mask = partmask > 20
-    depth = np.where(mask, depth, 0.0)
+    #kernel = np.ones((shadowClK, shadowClK))
+    #partmask = cv2.morphologyEx(partmask, cv2.MORPH_OPEN, kernel)
+    #partmask = signal.medfilt2d(partmask, kernel_size=shadowMK)
+    #partmask = partmask.astype(np.uint8)
+    #mask = partmask > 20
+    #depth = np.where(mask, depth, 0.0)
 
     if sensor is True:
-        depthFinal = cv2.resize(depth, (720, 540))
+        depthFinal = cv2.resize(depth, None, fx=1 / 2, fy=1 / 2)
         res = (((depthFinal / 1000.0) * 1.41421356) ** 2)
         depthFinal = cv2.GaussianBlur(depthFinal, (blurK, blurK), blurS, blurS)
         # quantify to depth resolution and apply gaussian
@@ -436,11 +434,12 @@ def get_normal(depth_refine, fx=-1, fy=-1, cx=-1, cy=-1, for_vis=True):
 if __name__ == "__main__":
 
     #root = '/home/sthalham/data/renderings/linemod_BG/patches31052018/patches'  # path to train samples
-    root = '/home/stefan/data/rendered_data/tless/patches'
-    target = '/home/stefan/data/train_data/tless_3DBox/'
+    root = '/home/stefan/data/rendered_data/tless_V3/patches'
+    target = '/home/stefan/data/train_data/tless_V3_magnified/'
+    mesh_info = '/home/stefan/data/Meshes/tless_BOP/models_info.json'
     # [depth, normals, sensor, simplex, full]
     method = 'full'
-    visu = False
+    visu = True
     n_samples = 30000 # real=1214
     if dataset is 'tless':
         n_samples = 2524
@@ -480,6 +479,53 @@ if __name__ == "__main__":
     excludedImgs = []
     boxWidths = []
     boxHeights = []
+
+    #load mesh info
+    tdbox_transform = np.array([[0.0005, 0.0005, 0.0005],  # [35.087, 35.787, 60.686]
+                                [0.0005, 0.0005, -0.0005],
+                                [0.0005, -0.0005, -0.0005],
+                                [0.0005, -0.0005, 0.0005],
+                                [-0.0005, 0.0005, 0.0005],
+                                [-0.0005, 0.0005, -0.0005],
+                                [-0.0005, -0.0005, -0.0005],
+                                [-0.0005, -0.0005, 0.0005]])
+
+    threeD_boxes = np.ndarray((31, 8, 3), dtype=np.float32)
+    sym_cont = np.ndarray((31, 3), dtype=np.float32)
+    sym_disc = np.ndarray((33, 4, 4), dtype=np.float32)
+
+    for key, value in yaml.load(open(mesh_info)).items():
+        fac = 0.001
+        x_minus = value['min_x'] * fac
+        y_minus = value['min_y'] * fac
+        z_minus = value['min_z'] * fac
+        x_plus = value['size_x'] * fac + x_minus
+        y_plus = value['size_y'] * fac + y_minus
+        z_plus = value['size_z'] * fac + z_minus
+        three_box_solo = np.array([[x_plus, y_plus, z_plus],
+                                  [x_plus, y_plus, z_minus],
+                                  [x_plus, y_minus, z_minus],
+                                  [x_plus, y_minus, z_plus],
+                                  [x_minus, y_plus, z_plus],
+                                  [x_minus, y_plus, z_minus],
+                                  [x_minus, y_minus, z_minus],
+                                  [x_minus, y_minus, z_plus]])
+        threeD_boxes[int(key), :, :] = three_box_solo
+
+        if "symmetries_continuous" in value:
+            sym_cont[int(key), :] = np.asarray(value['symmetries_continuous'][0]['axis'], dtype=np.float32)
+        elif "symmetries_discrete" in value:
+            syms = value['symmetries_discrete']
+            #Obj 27 has 3 planes of symmetry
+            if len(syms) > 1:
+                sym_disc[int(key), :, :] = np.asarray(syms[0], dtype=np.float32).reshape((4, 4))
+                sym_disc[31, :, :] = np.asarray(syms[1], dtype=np.float32).reshape((4, 4))
+                sym_disc[32, :, :] = np.asarray(syms[2], dtype=np.float32).reshape((4, 4))
+            else:
+                sym_disc[int(key), :, :] = np.asarray(syms[0], dtype=np.float32).reshape((4,4))
+        else:
+            pass
+
 
     syns = os.listdir(root)
     #walkit = random.sample(syns, n_samples)
@@ -539,7 +585,7 @@ if __name__ == "__main__":
                     kShadow = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
                     kMed = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
                     kBlur = np.random.choice(np.arange(len(freqKern)), 1, p=freqKern / len(drawKern), replace=False)
-                    sBlur = random.uniform(0.25, 3.5)
+                    sBlur = random.uniform(0.0, 1.5) # usually to 3.5
                     sDep = random.uniform(0.002, 0.004)
                     kShadow.astype(int)
                     kMed.astype(int)
@@ -555,11 +601,59 @@ if __name__ == "__main__":
                     aug_xyz, depth_refine_aug, depth_imp = get_normal(depthAug, fx=fxkin, fy=fykin, cx=cxkin, cy=cykin,
                                                          for_vis=False)
 
-                    depth_refine = cv2.resize(depth_refine, (720, 540))
-                    sca = 255 / 2000.0
-                    depth_norm = depth_refine * sca
-                    aug_xyz = depth_norm.astype(int)
+                    depthAug[depth_refine > depthCut] = 0
+                    #depthAug[depthAug > depthCut] = 0
+                    scaCro = 255.0 / np.nanmax(depthAug)
+                    cross = np.multiply(depthAug, scaCro)
+                    aug_xyz = cross.astype(np.uint8)
                     aug_xyz = np.repeat(aug_xyz[:, :, np.newaxis], 3, 2)
+
+                    # interlude for TLESS_V3
+                    new_focal_x = 1075.6509
+                    new_focal_y = 1073.9035
+                    img_scaling_x = fxkin / new_focal_x
+                    img_scaling_y = fykin / new_focal_y
+                    pixels_x = int(360 * img_scaling_x)
+                    pixels_y = int(270 * img_scaling_y)
+                    V3_min_x = 360-pixels_x
+                    V3_max_x = 360+pixels_x
+                    V3_min_y = 270-pixels_y
+                    V3_max_y = 270+pixels_y
+                    aug_xyz = aug_xyz[V3_min_y:V3_max_y, V3_min_x:V3_max_x, :]
+                    aug_xyz = cv2.resize(aug_xyz, (720, 540))
+
+                    ind_keep = []
+                    for k, bbox in enumerate(bboxes):
+                        bbox = bbox.astype(int)
+                        x1 = np.asscalar(bbox[2])
+                        y1 = np.asscalar(bbox[1])
+                        x2 = np.asscalar(bbox[4])
+                        y2 = np.asscalar(bbox[3])
+                        if visibilities[k] > 0.5:
+                            if x1 < V3_min_x or x2 > V3_max_x or y1 < V3_min_y or y2 > V3_max_y:
+                                pass
+                            else:
+                                ind_keep.append(k)
+                        else:
+                            pass
+
+                    if not ind_keep:
+                        continue
+                    #fxkin = new_focal_x
+                    #fykin = new_focal_y
+                    bboxes = np.array(bboxes)
+                    bboxes = bboxes[ind_keep]
+                    #print(bboxes)
+                    bboxes[:,2] = np.multiply(bboxes[:,2]-V3_min_x, 1/img_scaling_x)
+                    bboxes[:,4] = np.multiply(bboxes[:,4]-V3_min_x, 1/img_scaling_x)
+                    bboxes[:,1] = np.multiply(bboxes[:,1]-V3_min_y, 1/img_scaling_y)
+                    bboxes[:,3] = np.multiply(bboxes[:,3]-V3_min_y, 1/img_scaling_y)
+                    visibilities = np.array(visibilities)
+                    visibilities = visibilities[ind_keep]
+                    #print(bboxes)
+
+                    #print(aug_xyz.shape)
+                    #print(np.amax(aug_xyz))
                     cv2.imwrite(fileName, aug_xyz)
 
                 imgID = int(newredname)
@@ -572,23 +666,38 @@ if __name__ == "__main__":
                 cats = []
                 posvis = []
                 postra = []
-                for i, bbox in enumerate(bboxes[:-1]):
+                #for i, bbox in enumerate(bboxes[:-1]):
+                for i, bbox in enumerate(bboxes):
 
                     if visibilities[i] < 0.5:
-                        print('visivility: ', visibilities[i], ' skip!')
+                        #print('visivility: ', visibilities[i], ' skip!')
                         continue
 
                     bbvis.append(bbox.astype(int))
-                    #bbvis.append((bbox * 1.125).astype(int))
                     objID = np.asscalar(bbox[0]) + 1
                     cats.append(objID)
 
                     bbox = (bbox).astype(int)
 
                     rot = tf3d.quaternions.quat2mat(poses[i, 3:])
+                    tra = poses[i, 0:3]
+                    pose = np.zeros((4,4), dtype=np.float32)
+                    pose[:3, :3] = rot
+                    pose[:3, 3] = tra
+                    pose[3, 3] = 1
+
+                    if objID in [1, 2, 3, 4, 13, 14, 15, 16, 17, 24, 30]:
+                        rot = get_cont_sympose(pose, sym_cont[objID, :])
+
+                    elif objID in [5, 6, 7, 8, 9, 10, 11, 12, 19, 20, 23, 25, 26, 28, 29]:
+                        rot = get_disc_sympose(pose, sym_disc[objID, :, :], objID)
+
+                    elif objID == 27:
+                        rot = get_disc_sympose(pose, [sym_disc[27, :, :], sym_disc[31, :, :], sym_disc[32, :, :]], objID)
+
                     rot = np.asarray(rot, dtype=np.float32)
 
-                    tDbox = rot.dot(threeD_boxes[bbox[0], :, :].T).T
+                    tDbox = rot[:3, :3].dot(threeD_boxes[bbox[0]+1, :, :].T).T
                     tDbox = tDbox + np.repeat(poses[i, np.newaxis, 0:3], 8, axis=0)
 
                     #if objID == 10 or objID == 11:
@@ -596,6 +705,41 @@ if __name__ == "__main__":
 
                     box3D = toPix_array(tDbox)
                     box3D = np.reshape(box3D, (16))
+
+                    # only for TLESS_V3
+                    box3D[0] = box3D[0] * (1/img_scaling_x) - V3_min_x
+                    box3D[1] = box3D[1] * (1/img_scaling_y) - V3_min_y
+                    box3D[2] = box3D[2] * (1/img_scaling_x) - V3_min_x
+                    box3D[3] = box3D[3] * (1/img_scaling_y) - V3_min_y
+                    box3D[4] = box3D[4] * (1/img_scaling_x) - V3_min_x
+                    box3D[5] = box3D[5] * (1/img_scaling_y) - V3_min_y
+                    box3D[6] = box3D[6] * (1/img_scaling_x) - V3_min_x
+                    box3D[7] = box3D[7] * (1/img_scaling_y) - V3_min_y
+                    box3D[8] = box3D[8] * (1/img_scaling_x) - V3_min_x
+                    box3D[9] = box3D[9] * (1/img_scaling_y) - V3_min_y
+                    box3D[10] = box3D[10] * (1/img_scaling_x) - V3_min_x
+                    box3D[11] = box3D[11] * (1/img_scaling_y) - V3_min_y
+                    box3D[12] = box3D[12] * (1/img_scaling_x) - V3_min_x
+                    box3D[13] = box3D[13] * (1/img_scaling_y) - V3_min_y
+                    box3D[14] = box3D[14] * (1/img_scaling_x) - V3_min_x
+                    box3D[15] = box3D[15] * (1/img_scaling_y) - V3_min_y
+                    #box3D[0] = np.multiply(box3D[0] - V3_min_x,  img_scaling_x)
+                    #box3D[1] = np.multiply(box3D[1] - V3_min_y,  img_scaling_y)
+                    #box3D[2] = np.multiply(box3D[2] - V3_min_x,  img_scaling_x)
+                    #box3D[3] = np.multiply(box3D[3] - V3_min_y,  img_scaling_y)
+                    #box3D[4] = np.multiply(box3D[4] - V3_min_x,  img_scaling_x)
+                    #box3D[5] = np.multiply(box3D[5] - V3_min_y,  img_scaling_y)
+                    #box3D[6] = np.multiply(box3D[6] - V3_min_x,  img_scaling_x)
+                    #box3D[7] = np.multiply(box3D[7] - V3_min_y,  img_scaling_y)
+                    #box3D[8] = np.multiply(box3D[8] - V3_min_x,  img_scaling_x)
+                    #box3D[9] = np.multiply(box3D[9] - V3_min_y,  img_scaling_y)
+                    #box3D[10] = np.multiply(box3D[10] - V3_min_x,  img_scaling_x)
+                    #box3D[11] = np.multiply(box3D[11] - V3_min_y,  img_scaling_y)
+                    #box3D[12] = np.multiply(box3D[12] - V3_min_x,  img_scaling_x)
+                    #box3D[13] = np.multiply(box3D[13] - V3_min_y,  img_scaling_y)
+                    #box3D[14] = np.multiply(box3D[14] - V3_min_x,  img_scaling_x)
+                    #box3D[15] = np.multiply(box3D[15] - V3_min_y,  img_scaling_y)
+
                     box3D = box3D.tolist()
                     bb3vis.append(box3D)
 
@@ -679,10 +823,14 @@ if __name__ == "__main__":
 
                 if visu is True:
                     img = aug_xyz
-                    #img = cv2.imread(fileName, cv2.IMREAD_UNCHANGED)
-                    for i, bb in enumerate(bbvis[:]):
+                    for i, bb in enumerate(bbvis):
 
-                        cv2.rectangle(aug_xyz, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
+                        #if cats[i] not in [19, 20, 23]:
+                        #    continue
+
+                        bb = np.array(bb)
+
+                        cv2.rectangle(img, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
                                       (255, 255, 255), 2)
                         cv2.rectangle(img, (int(bb[2]), int(bb[1])), (int(bb[4]), int(bb[3])),
                                       (0, 0, 0), 1)
@@ -694,11 +842,11 @@ if __name__ == "__main__":
                         fontthickness = 1
                         lineType = 2
                         gtText = str(cats[i])
-                        print(cats[i])
+                        #print(cats[i])
 
                         fontColor2 = (255, 255, 255)
                         fontthickness2 = 3
-                        cv2.putText(aug_xyz, gtText,
+                        cv2.putText(img, gtText,
                                 bottomLeftCornerOfText,
                                 font,
                                 fontScale,
@@ -706,7 +854,7 @@ if __name__ == "__main__":
                                 fontthickness2,
                                 lineType)
 
-                        cv2.putText(aug_xyz, gtText,
+                        cv2.putText(img, gtText,
                                 bottomLeftCornerOfText,
                                 font,
                                 fontScale,
@@ -722,9 +870,13 @@ if __name__ == "__main__":
                             #pose2D = posvis[i]
                             #print(str(cats[i]))
                             
-                            colR = random.randint(0, 255)
-                            colG = random.randint(0, 255)
-                            colB = random.randint(0, 255)
+                            #colR = random.randint(0, 255)
+                            #colG = random.randint(0, 255)
+                            #colB = random.randint(0, 255)
+
+                            colR = 250
+                            colG = 25
+                            colB = 175
                             '''
                             #rot_lie = [[0.0, pose[3], pose[4]], [-pose[3], 0.0, pose[5]], [-pose[4], -pose[5], 0.0]]
                             #ssm =np.asarray(rot_lie, dtype=np.float32)
@@ -740,10 +892,10 @@ if __name__ == "__main__":
                             draw_axis(aug_xyz, pose2D)
                             '''
 
-                            img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (colR, colG, colB), 2)
-                            img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (colR, colG, colB), 2)
+                            img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[2:4].ravel()), (130, 245, 13), 2)
+                            img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[4:6].ravel()), (50, 112, 220), 2)
+                            img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[6:8].ravel()), (50, 112, 220), 2)
+                            img = cv2.line(img, tuple(pose[6:8].ravel()), tuple(pose[0:2].ravel()), (50, 112, 220), 2)
                             img = cv2.line(img, tuple(pose[0:2].ravel()), tuple(pose[8:10].ravel()), (colR, colG, colB), 2)
                             img = cv2.line(img, tuple(pose[2:4].ravel()), tuple(pose[10:12].ravel()), (colR, colG, colB), 2)
                             img = cv2.line(img, tuple(pose[4:6].ravel()), tuple(pose[12:14].ravel()), (colR, colG, colB), 2)
