@@ -32,7 +32,7 @@ fxkin = 1075.0
 fykin = 1075.0
 cxkin = 360
 cykin = 270
-depthCut = 2000
+depthCut = 1500
 
 
 def matang(A, B):
@@ -52,26 +52,6 @@ def matang(A, B):
     return np.rad2deg(np.arccos(thetrace))
 
 
-#def get_cont_sympose(rot_pose, sym):
-#    axis_order = 's'
-#    multiply = []
-#    for axis_id, axis in enumerate(['x', 'y', 'z']):
-#        if (sym[axis_id] == 1):
-#            axis_order += axis
-#            multiply.append(0)
-#    for axis_id, axis in enumerate(['x', 'y', 'z']):
-#        if (sym[axis_id] == 0):
-#            axis_order += axis
-#            multiply.append(1)
-
-#    axis_1, axis_2, axis_3 = tf3d.euler.mat2euler(rot_pose[:3, :3], axis_order) # szxy
-#    axis_1 = axis_1 * multiply[0] # 0
-#    axis_2 = axis_2 * multiply[1] # 1
-#    axis_3 = axis_3 * multiply[2] # 1
-#    rot_pose[:3, :3] = tf3d.euler.euler2mat(axis_1, axis_2, axis_3, axis_order)  #
-
-#    return rot_pose
-
 def get_cont_sympose(rot_pose, sym):
 
     cam_in_obj = np.dot(np.linalg.inv(rot_pose), (0, 0, 0, 1))
@@ -81,33 +61,64 @@ def get_cont_sympose(rot_pose, sym):
     return rot_pose
 
 
+#def get_disc_sympose(rot_pose, sym, oid):
+
+#    if len(sym) > 3:
+#        rot_sym = np.matmul(rot_pose[:3, :3], sym[:3, :3])
+#        rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(rot_pose[:3, :3], 'szyx')
+#        sym_1, sym_2, sym_3 = tf3d.euler.mat2euler(rot_sym, 'szyx')
+        #if oid in [5, 6, 7, 8, 9, 10, 11, 12, 19, 20, 23, 25, 26, 28, 29]:
+#        #    # TODO
+#        #    rot_pose = rot_pose
+#        if rot_1 < 0.0:
+#            rot_pose[:3, :3] = tf3d.euler.euler2mat(sym_1, sym_2, sym_3, 'szyx')
+#            sym[:3, 3] *= 0.001
+#            rot_pose = np.matmul(rot_pose, sym)
+#    else:
+#        rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(rot_pose[:3, :3], 'szyx')
+#        if rot_1 < 0.0 or rot_1 > (math.pi/2):
+#            sym1 = np.matmul(rot_pose[:3, :3], sym[0][:3, :3])
+#            rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(sym1, 'szyx')
+#            rot_pose[:3, :3] = tf3d.euler.euler2mat(rot_1, rot_2, rot_3, 'szyx')
+#        if rot_1 < 0.0 or rot_1 > (math.pi/2):
+#            sym1 = np.matmul(rot_pose[:3, :3], sym[1][:3, :3])
+#            rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(sym1, 'szyx')
+#            rot_pose[:3, :3] = tf3d.euler.euler2mat(rot_1, rot_2, rot_3, 'szyx')
+#        if rot_1 < 0.0 or rot_1 > (math.pi/2):
+#            sym1 = np.matmul(rot_pose[:3, :3], sym[2][:3, :3])
+#            rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(sym1, 'szyx')
+#            rot_pose[:3, :3] = tf3d.euler.euler2mat(rot_1, rot_2, rot_3, 'szyx')
+
+#    return rot_pose
+
+
 def get_disc_sympose(rot_pose, sym, oid):
 
     if len(sym) > 3:
-        rot_sym = np.matmul(rot_pose[:3, :3], sym[:3, :3])
-        rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(rot_pose[:3, :3], 'szyx')
-        sym_1, sym_2, sym_3 = tf3d.euler.mat2euler(rot_sym, 'szyx')
-        #if oid in [5, 6, 7, 8, 9, 10, 11, 12, 19, 20, 23, 25, 26, 28, 29]:
-        #    # TODO
-        #    rot_pose = rot_pose
-        if rot_1 < 0.0:
-            rot_pose[:3, :3] = tf3d.euler.euler2mat(sym_1, sym_2, sym_3, 'szyx')
-            sym[:3, 3] *= 0.001
-            rot_pose = np.matmul(rot_pose, sym)
+        if sym[0, 0] == 1:
+            c_alpha = np.dot([0, 1, 0], np.dot(rot_pose[0:3, 0:3], [0, 1, 0]))
+            if c_alpha < 0:
+                rot_pose = np.dot(rot_pose, sym)
+        if sym[1, 1] == 1:
+            c_alpha = np.dot([1, 0, 0], np.dot(rot_pose[0:3, 0:3], [1, 0, 0]))
+            if c_alpha < 0:
+                rot_pose = np.dot(rot_pose, sym)
+        if sym[2, 2] == 1:
+            c_alpha = np.dot([1, 0, 0], np.dot(rot_pose[0:3, 0:3], [1, 0, 0]))
+            if c_alpha < 0:
+                rot_pose = np.dot(rot_pose, sym)
+
     else:
-        rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(rot_pose[:3, :3], 'szyx')
-        if rot_1 < 0.0 or rot_1 > (math.pi/2):
-            sym1 = np.matmul(rot_pose[:3, :3], sym[0][:3, :3])
-            rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(sym1, 'szyx')
-            rot_pose[:3, :3] = tf3d.euler.euler2mat(rot_1, rot_2, rot_3, 'szyx')
-        if rot_1 < 0.0 or rot_1 > (math.pi/2):
-            sym1 = np.matmul(rot_pose[:3, :3], sym[1][:3, :3])
-            rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(sym1, 'szyx')
-            rot_pose[:3, :3] = tf3d.euler.euler2mat(rot_1, rot_2, rot_3, 'szyx')
-        if rot_1 < 0.0 or rot_1 > (math.pi/2):
-            sym1 = np.matmul(rot_pose[:3, :3], sym[2][:3, :3])
-            rot_1, rot_2, rot_3 = tf3d.euler.mat2euler(sym1, 'szyx')
-            rot_pose[:3, :3] = tf3d.euler.euler2mat(rot_1, rot_2, rot_3, 'szyx')
+        y_alpha = np.dot([0, 1, 0], np.dot(rot_pose[0:3, 0:3], [0, 1, 0]))
+        x_alpha = np.dot([1, 0, 0], np.dot(rot_pose[0:3, 0:3], [1, 0, 0]))
+        if x_alpha > 0 and y_alpha > 0:
+            pass
+        elif x_alpha > 0 and y_alpha < 0:
+            rot_pose = np.dot(rot_pose, sym[0])
+        elif x_alpha < 0 and y_alpha > 0:
+            rot_pose = np.dot(rot_pose, sym[2])
+        elif x_alpha < 0 and y_alpha < 0:
+            rot_pose = np.dot(rot_pose, sym[1])
 
     return rot_pose
 
@@ -608,52 +619,6 @@ if __name__ == "__main__":
                     aug_xyz = cross.astype(np.uint8)
                     aug_xyz = np.repeat(aug_xyz[:, :, np.newaxis], 3, 2)
 
-                    # interlude for TLESS_V3
-                    #new_focal_x = 1075.6509
-                    #new_focal_y = 1073.9035
-                    #img_scaling_x = fxkin / new_focal_x
-                    #img_scaling_y = fykin / new_focal_y
-                    #pixels_x = int(360 * img_scaling_x)
-                    #pixels_y = int(270 * img_scaling_y)
-                    #V3_min_x = 360-pixels_x
-                    #V3_max_x = 360+pixels_x
-                    #V3_min_y = 270-pixels_y
-                    #V3_max_y = 270+pixels_y
-                    #aug_xyz = aug_xyz[V3_min_y:V3_max_y, V3_min_x:V3_max_x, :]
-                    #aug_xyz = cv2.resize(aug_xyz, (720, 540))
-
-                    #ind_keep = []
-                    #for k, bbox in enumerate(bboxes):
-                    #    bbox = bbox.astype(int)
-                    #    x1 = np.asscalar(bbox[2])
-                    #    y1 = np.asscalar(bbox[1])
-                    #    x2 = np.asscalar(bbox[4])
-                    #    y2 = np.asscalar(bbox[3])
-                     #   if visibilities[k] > 0.5:
-                    #        if x1 < V3_min_x or x2 > V3_max_x or y1 < V3_min_y or y2 > V3_max_y:
-                    #            pass
-                    #        else:
-                    #            ind_keep.append(k)
-                    #    else:
-                    #        pass
-
-                    #if not ind_keep:
-                    #    continue
-                    #fxkin = new_focal_x
-                    #fykin = new_focal_y
-                    #cxkin = int((V3_max_x - V3_min_x)/2)
-                    #cxkin = int((V3_max_y - V3_min_y) / 2)
-                    #bboxes = np.array(bboxes)
-                    #bboxes = bboxes[ind_keep]
-                    #print(bboxes)
-                    #bboxes[:,2] = np.multiply(bboxes[:,2]-V3_min_x, 1/img_scaling_x)
-                    #bboxes[:,4] = np.multiply(bboxes[:,4]-V3_min_x, 1/img_scaling_x)
-                    #bboxes[:,1] = np.multiply(bboxes[:,1]-V3_min_y, 1/img_scaling_y)
-                    #bboxes[:,3] = np.multiply(bboxes[:,3]-V3_min_y, 1/img_scaling_y)
-                    #visibilities = np.array(visibilities)
-                    #visibilities = visibilities[ind_keep]
-                    #print(bboxes)
-
                     #print(aug_xyz.shape)
                     #print(np.amax(aug_xyz))
                     cv2.imwrite(fileName, aug_xyz)
@@ -672,6 +637,9 @@ if __name__ == "__main__":
                 #print(bboxes)
                 #for i, bbox in enumerate(bboxes[:-1]):
                 for i, bbox in enumerate(bboxes):
+
+                    if (bbox[0]+1) != 27:
+                        continue
 
                     if visibilities[i] < 0.5:
                         #print('visivility: ', visibilities[i], ' skip!')
@@ -709,41 +677,6 @@ if __name__ == "__main__":
 
                     box3D = toPix_array(tDbox)
                     box3D = np.reshape(box3D, (16))
-
-                    # only for TLESS_V3
-                    #box3D[0] = box3D[0] * (1/img_scaling_x) - V3_min_x
-                    #box3D[1] = box3D[1] * (1/img_scaling_y) - V3_min_y
-                    #box3D[2] = box3D[2] * (1/img_scaling_x) - V3_min_x
-                    #box3D[3] = box3D[3] * (1/img_scaling_y) - V3_min_y
-                    #box3D[4] = box3D[4] * (1/img_scaling_x) - V3_min_x
-                    #box3D[5] = box3D[5] * (1/img_scaling_y) - V3_min_y
-                    #box3D[6] = box3D[6] * (1/img_scaling_x) - V3_min_x
-                    #box3D[7] = box3D[7] * (1/img_scaling_y) - V3_min_y
-                    #box3D[8] = box3D[8] * (1/img_scaling_x) - V3_min_x
-                    #box3D[9] = box3D[9] * (1/img_scaling_y) - V3_min_y
-                    #box3D[10] = box3D[10] * (1/img_scaling_x) - V3_min_x
-                    #box3D[11] = box3D[11] * (1/img_scaling_y) - V3_min_y
-                    #box3D[12] = box3D[12] * (1/img_scaling_x) - V3_min_x
-                    #box3D[13] = box3D[13] * (1/img_scaling_y) - V3_min_y
-                    #box3D[14] = box3D[14] * (1/img_scaling_x) - V3_min_x
-                    #box3D[15] = box3D[15] * (1/img_scaling_y) - V3_min_y
-                    #box3D[0] = np.multiply(box3D[0] - V3_min_x,  img_scaling_x)
-                    #box3D[1] = np.multiply(box3D[1] - V3_min_y,  img_scaling_y)
-                    #box3D[2] = np.multiply(box3D[2] - V3_min_x,  img_scaling_x)
-                    #box3D[3] = np.multiply(box3D[3] - V3_min_y,  img_scaling_y)
-                    #box3D[4] = np.multiply(box3D[4] - V3_min_x,  img_scaling_x)
-                    #box3D[5] = np.multiply(box3D[5] - V3_min_y,  img_scaling_y)
-                    #box3D[6] = np.multiply(box3D[6] - V3_min_x,  img_scaling_x)
-                    #box3D[7] = np.multiply(box3D[7] - V3_min_y,  img_scaling_y)
-                    #box3D[8] = np.multiply(box3D[8] - V3_min_x,  img_scaling_x)
-                    #box3D[9] = np.multiply(box3D[9] - V3_min_y,  img_scaling_y)
-                    #box3D[10] = np.multiply(box3D[10] - V3_min_x,  img_scaling_x)
-                    #box3D[11] = np.multiply(box3D[11] - V3_min_y,  img_scaling_y)
-                    #box3D[12] = np.multiply(box3D[12] - V3_min_x,  img_scaling_x)
-                    #box3D[13] = np.multiply(box3D[13] - V3_min_y,  img_scaling_y)
-                    #box3D[14] = np.multiply(box3D[14] - V3_min_x,  img_scaling_x)
-                    #box3D[15] = np.multiply(box3D[15] - V3_min_y,  img_scaling_y)
-
                     box3D = box3D.tolist()
                     bb3vis.append(box3D)
 
@@ -829,8 +762,8 @@ if __name__ == "__main__":
                     img = aug_xyz
                     for i, bb in enumerate(bbvis):
 
-                        if cats[i] not in [1]:
-                            continue
+                        #if cats[i] not in [5, 6, 7, 8, 9, 10, 11, 12, 19, 20, 23, 25, 26, 28, 29]:
+                        #    continue
 
                         bb = np.array(bb)
 
